@@ -91,7 +91,7 @@ function parseArgs(args: string[]): ParsedArgs {
       continue;
     }
 
-    if (arg === "--root" || arg === "-r") {
+    if (arg === "--app" || arg === "-a") {
       const value = args[i + 1];
       if (value) {
         options.root = path.resolve(value);
@@ -113,7 +113,7 @@ function parseArgs(args: string[]): ParsedArgs {
 
 function printHelp(): void {
   console.log(`
-rr - Static analysis for React Router applications
+rr - Static analysis and functional verification for React Router applications
 
 USAGE:
   rr [OPTIONS] [FILES...]
@@ -122,9 +122,9 @@ OPTIONS:
   -h, --help              Show this help message
   -v, --version           Show version number
   -f, --format <format>   Output format: text (default) or json
-  -c, --check <checks>    Comma-separated list of checks to run
+  -c, --check <checks>    Comma-separated list of checks to run (default is all checks)
                           Available: links, forms, loader, params, interactive, a11y
-  -r, --root <path>       Root directory of the project (default: current directory)
+  -a, --app <path>       Root directory of the app to roto-root (default: current directory)
 
 EXAMPLES:
   # Check all files
@@ -140,7 +140,7 @@ EXAMPLES:
   rr --format json
 
   # Set project root
-  rr --root ./my-app
+  rr --app ./my-app
 `);
 }
 
