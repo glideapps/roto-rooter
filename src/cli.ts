@@ -149,7 +149,7 @@ EXAMPLES:
 
 function printTextOutput(issues: AnalyzerIssue[]): void {
   if (issues.length === 0) {
-    console.log("✅ No issues found");
+    console.log("No issues found.");
     return;
   }
 
@@ -157,12 +157,12 @@ function printTextOutput(issues: AnalyzerIssue[]): void {
   const warningCount = issues.filter((i) => i.severity === "warning").length;
 
   console.log(
-    `\n❌ rr found ${issues.length} issue${issues.length === 1 ? "" : "s"}:`
+    `\nrr found ${issues.length} issue${issues.length === 1 ? "" : "s"}:`
   );
   console.log();
 
   for (const issue of issues) {
-    const icon = issue.severity === "error" ? "❌" : "⚠️";
+    const icon = issue.severity === "error" ? "[error]" : "[warning]";
     const relativePath = path.relative(process.cwd(), issue.location.file);
 
     console.log(
@@ -173,7 +173,7 @@ function printTextOutput(issues: AnalyzerIssue[]): void {
     }
     console.log(`  ${icon} ${issue.message}`);
     if (issue.suggestion) {
-      console.log(`  💡 ${issue.suggestion}`);
+      console.log(`  -> ${issue.suggestion}`);
     }
     console.log();
   }
