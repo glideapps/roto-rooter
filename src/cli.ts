@@ -127,7 +127,7 @@ OPTIONS:
   -a, --app <path>       Root directory of the app to roto-root (default: current directory)
 
 EXAMPLES:
-  # Check all files
+  # Check all files in current directory
   rr
 
   # Check specific file(s)
@@ -139,8 +139,11 @@ EXAMPLES:
   # Output as JSON
   rr --format json
 
-  # Set project root
-  rr --app ./my-app
+  # Analyze files in the context of a different app
+  rr --app ./my-app ./my-app/app/routes/dashboard.tsx
+
+  # Analyze a file against an app in a different location
+  rr --app /path/to/app /some/other/path/component.tsx
 `);
 }
 

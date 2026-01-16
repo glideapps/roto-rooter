@@ -96,7 +96,7 @@ export function analyze(options: CliOptions): AnalyzerResult {
 
   // If specific files were provided, filter issues to only those files
   if (files.length > 0) {
-    const targetFiles = new Set(files.map((f) => path.resolve(root, f)));
+    const targetFiles = new Set(files.map((f) => path.resolve(f)));
     const filteredIssues = issues.filter((issue) =>
       targetFiles.has(path.resolve(issue.location.file))
     );
@@ -111,8 +111,8 @@ export function analyze(options: CliOptions): AnalyzerResult {
  */
 function findComponentFiles(root: string, specificFiles: string[]): string[] {
   if (specificFiles.length > 0) {
-    // Analyze only specific files
-    return specificFiles.map((f) => path.resolve(root, f));
+    // Analyze only specific files (paths are independent of root)
+    return specificFiles.map((f) => path.resolve(f));
   }
 
   // Find all TSX files in app/routes
