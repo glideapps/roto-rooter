@@ -1,25 +1,43 @@
 {
-  "name": "react-router-analyzer",
+  "name": "roto-rooter",
   "version": "0.1.0",
   "description": "Static analysis tool for React Router applications",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "react-router-analyzer": "./dist/cli.js"
+    "rr": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
   },
   "scripts": {
     "build": "tsc",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "react-router",
     "static-analysis",
-    "linter"
+    "linter",
+    "react",
+    "routing",
+    "lint"
   ],
   "author": "",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/roto-rooter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/roto-rooter/issues"
+  },
+  "homepage": "https://github.com/your-username/roto-rooter#readme",
   "devDependencies": {
     "@types/node": "^25.0.9",
     "typescript": "^5.3.0",

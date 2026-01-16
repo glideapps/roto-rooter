@@ -1,12 +1,26 @@
 #!/usr/bin/env node
 
+import * as fs from "fs";
 import * as path from "path";
+import { fileURLToPath } from "url";
 import { analyze } from "./analyzer.js";
 import type { AnalyzerIssue, CliOptions } from "./types.js";
+
+function getVersion(): string {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const packageJsonPath = path.resolve(__dirname, "..", "package.json");
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+  return packageJson.version;
+}
 
 function main(): void {
   const args = process.argv.slice(2);
   const options = parseArgs(args);
+
+  if (options.version) {
+    console.log(getVersion());
+    process.exit(0);
+  }
 
   if (options.help) {
     printHelp();
@@ -30,6 +44,7 @@ function main(): void {
 
 interface ParsedArgs extends CliOptions {
   help: boolean;
+  version: boolean;
 }
 
 function parseArgs(args: string[]): ParsedArgs {
@@ -39,6 +54,7 @@ function parseArgs(args: string[]): ParsedArgs {
     format: "text",
     root: process.cwd(),
     help: false,
+    version: false,
   };
 
   let i = 0;
@@ -47,6 +63,12 @@ function parseArgs(args: string[]): ParsedArgs {
 
     if (arg === "--help" || arg === "-h") {
       options.help = true;
+      i++;
+      continue;
+    }
+
+    if (arg === "--version" || arg === "-v") {
+      options.version = true;
       i++;
       continue;
     }
@@ -91,13 +113,14 @@ function parseArgs(args: string[]): ParsedArgs {
 
 function printHelp(): void {
   console.log(`
-react-router-analyzer - Static analysis for React Router applications
+rr - Static analysis for React Router applications
 
 USAGE:
-  react-router-analyzer [OPTIONS] [FILES...]
+  rr [OPTIONS] [FILES...]
 
 OPTIONS:
   -h, --help              Show this help message
+  -v, --version           Show version number
   -f, --format <format>   Output format: text (default) or json
   -c, --check <checks>    Comma-separated list of checks to run
                           Available: links, forms, loader, params, interactive, a11y
@@ -105,19 +128,19 @@ OPTIONS:
 
 EXAMPLES:
   # Check all files
-  react-router-analyzer
+  rr
 
   # Check specific file(s)
-  react-router-analyzer app/routes/employees.tsx
+  rr app/routes/employees.tsx
 
   # Run only link and form checks
-  react-router-analyzer --check links,forms
+  rr --check links,forms
 
   # Output as JSON
-  react-router-analyzer --format json
+  rr --format json
 
   # Set project root
-  react-router-analyzer --root ./my-app
+  rr --root ./my-app
 `);
 }
 
@@ -131,7 +154,7 @@ function printTextOutput(issues: AnalyzerIssue[]): void {
   const warningCount = issues.filter((i) => i.severity === "warning").length;
 
   console.log(
-    `\n❌ react-router-analyzer found ${issues.length} issue${issues.length === 1 ? "" : "s"}:`
+    `\n❌ rr found ${issues.length} issue${issues.length === 1 ? "" : "s"}:`
   );
   console.log();
 
