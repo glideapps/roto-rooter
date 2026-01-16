@@ -1,0 +1,48 @@
+{
+  "name": "roto-rooter",
+  "version": "0.1.0",
+  "description": "Static analysis and functional verifier tool for React Router applications",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "rr": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "react-router",
+    "static-analysis",
+    "linter",
+    "react",
+    "routing",
+    "lint"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glideapps/roto-rooter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/glideapps/roto-rooter/issues"
+  },
+  "homepage": "https://github.com/glideapps/roto-rooter#readme",
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "typescript": "^5.3.0",
+    "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "fastest-levenshtein": "^1.0.16"
+  }
+}
