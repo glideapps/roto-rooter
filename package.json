@@ -1,7 +1,7 @@
 {
   "name": "roto-rooter",
   "version": "0.1.0",
-  "description": "Static analysis tool for React Router applications",
+  "description": "Static analysis and functional verifier tool for React Router applications",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
@@ -32,12 +32,12 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/roto-rooter.git"
+    "url": "git+https://github.com/glideapps/roto-rooter.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/roto-rooter/issues"
+    "url": "https://github.com/glideapps/roto-rooter/issues"
   },
-  "homepage": "https://github.com/your-username/roto-rooter#readme",
+  "homepage": "https://github.com/glideapps/roto-rooter#readme",
   "devDependencies": {
     "@types/node": "^25.0.9",
     "typescript": "^5.3.0",
