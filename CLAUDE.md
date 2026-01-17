@@ -14,7 +14,6 @@ Static analysis and functional verifier tool for React Router applications. CLI 
 
 - `npm run build` - Compile TypeScript
 - `npm test` - Run tests (vitest)
-- `npm run test:run` - Run tests once
 
 ## Style Guidelines
 

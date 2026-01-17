@@ -31,7 +31,7 @@ Add a new check to roto-rooter: `/add-check <check-name>`
 
 6. **Documentation** - Update `README.md` and `CLAUDE.md` to list the new check
 
-7. **Verify** - Run `npm run test:run`
+7. **Verify** - Run `npm test`
 
 ## Summary Output
 
