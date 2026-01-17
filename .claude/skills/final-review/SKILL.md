@@ -1,3 +1,8 @@
+---
+name: final-review
+description: Performs a comprehensive pre-merge review of changes on the current branch. Use when the user wants to verify their work before merging, check PR readiness, or run a final validation of tests, types, lint, and PR metadata.
+---
+
 # Final Review Skill
 
 Perform a final review before merging: `/final-review`

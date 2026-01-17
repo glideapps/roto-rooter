@@ -1,3 +1,8 @@
+---
+name: add-check
+description: Add a new static analysis check to roto-rooter. Use when the user wants to create a new check, validation rule, or analyzer for React Router applications. Guides implementation of checks that require cross-file application context like route/component relationships.
+---
+
 # Add Check Skill
 
 Add a new check to roto-rooter: `/add-check <check-name>`
