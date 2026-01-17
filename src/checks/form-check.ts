@@ -5,7 +5,10 @@ import type {
   RouteDefinition,
 } from '../types.js';
 import { matchRoute, getAllRoutePaths } from '../parsers/route-parser.js';
-import { parseRouteExports } from '../parsers/action-parser.js';
+import {
+  parseRouteExports,
+  type RouteExports,
+} from '../parsers/action-parser.js';
 import { findBestMatch, formatSuggestion } from '../utils/suggestion.js';
 
 /**
@@ -93,6 +96,14 @@ function validateForm(
             code: `<Form action="${form.action}">`,
             suggestion: `Add an action export to ${targetRoute.file}`,
           });
+        } else {
+          // Action exists - check field alignment
+          const fieldIssues = validateFormFields(
+            form,
+            exports,
+            targetRoute.file
+          );
+          issues.push(...fieldIssues);
         }
       } catch {
         // File doesn't exist or can't be parsed - route-parser should catch this
@@ -109,6 +120,75 @@ function validateForm(
         location: form.location,
         code: '<Form>',
         suggestion: 'Add an action export to handle form submission',
+      });
+    } else {
+      // Action exists in current file - check field alignment
+      const routeFilePath = component.file;
+      try {
+        const exports = parseRouteExports(routeFilePath);
+        if (exports.actionFields) {
+          const fieldIssues = validateFormFields(form, exports);
+          issues.push(...fieldIssues);
+        }
+      } catch {
+        // Parsing failed - skip field validation
+      }
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Validate that form fields align with what the action expects
+ */
+function validateFormFields(
+  form: ComponentAnalysis['forms'][0],
+  exports: RouteExports,
+  targetFile?: string
+): AnalyzerIssue[] {
+  const issues: AnalyzerIssue[] = [];
+
+  const formFields = new Set(form.inputNames);
+  const actionFields = new Set(exports.actionFields ?? []);
+
+  // Skip validation if action doesn't read any fields (might use Object.fromEntries or similar)
+  if (actionFields.size === 0) {
+    return issues;
+  }
+
+  // Check for fields the action expects but form doesn't provide
+  for (const actionField of actionFields) {
+    if (!formFields.has(actionField)) {
+      const formCode = form.action
+        ? `<Form action="${form.action}">`
+        : '<Form>';
+      issues.push({
+        category: 'forms',
+        severity: 'error',
+        message: `Action reads field '${actionField}' but form has no input with name="${actionField}"`,
+        location: form.location,
+        code: formCode,
+        suggestion: targetFile
+          ? `Add <input name="${actionField}" /> to the form, or check the action in ${targetFile}`
+          : `Add <input name="${actionField}" /> to the form`,
+      });
+    }
+  }
+
+  // Check for form fields the action never reads (warning - might be intentional)
+  for (const formField of formFields) {
+    if (!actionFields.has(formField)) {
+      const formCode = form.action
+        ? `<Form action="${form.action}">`
+        : '<Form>';
+      issues.push({
+        category: 'forms',
+        severity: 'warning',
+        message: `Form field '${formField}' is never read by the action`,
+        location: form.location,
+        code: formCode,
+        suggestion: `Remove unused input or add formData.get('${formField}') to the action`,
       });
     }
   }

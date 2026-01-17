@@ -5,7 +5,9 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { analyze } from './analyzer.js';
 import { applyFixes } from './fixer.js';
-import type { AnalyzerIssue, CliOptions, FixResult } from './types.js';
+import type { CliOptions, FixResult } from './types.js';
+import { formatIssues } from './utils/format-issue.js';
+import { formatResultJson } from './utils/format-json.js';
 
 function getVersion(): string {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -52,9 +54,10 @@ function main(): void {
 
   // Normal mode - just report issues
   if (options.format === 'json') {
-    console.log(JSON.stringify(result, null, 2));
+    const jsonOutput = formatResultJson(result);
+    console.log(JSON.stringify(jsonOutput, null, 2));
   } else {
-    printTextOutput(result.issues);
+    console.log(formatIssues(result.issues));
   }
 
   // Exit with error code if there are issues
@@ -189,43 +192,6 @@ EXAMPLES:
   # Analyze files in the context of a different app
   rr --app ./my-app ./my-app/app/routes/dashboard.tsx
 `);
-}
-
-function printTextOutput(issues: AnalyzerIssue[]): void {
-  if (issues.length === 0) {
-    console.log('No issues found.');
-    return;
-  }
-
-  const errorCount = issues.filter((i) => i.severity === 'error').length;
-  const warningCount = issues.filter((i) => i.severity === 'warning').length;
-
-  console.log(
-    `\nrr found ${issues.length} issue${issues.length === 1 ? '' : 's'}:`
-  );
-  console.log();
-
-  for (const issue of issues) {
-    const icon = issue.severity === 'error' ? '[error]' : '[warning]';
-    const relativePath = path.relative(process.cwd(), issue.location.file);
-
-    console.log(
-      `[${issue.category}] ${relativePath}:${issue.location.line}:${issue.location.column}`
-    );
-    if (issue.code) {
-      console.log(`  ${issue.code}`);
-    }
-    console.log(`  ${icon} ${issue.message}`);
-    if (issue.suggestion) {
-      console.log(`  -> ${issue.suggestion}`);
-    }
-    console.log();
-  }
-
-  console.log(
-    `Summary: ${errorCount} error${errorCount === 1 ? '' : 's'}, ${warningCount} warning${warningCount === 1 ? '' : 's'}`
-  );
-  console.log('Run with --help for options.');
 }
 
 function printFixOutput(fixResult: FixResult, dryRun: boolean): void {

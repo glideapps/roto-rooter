@@ -15,6 +15,10 @@ export { checkLoaders } from './checks/loader-check.js';
 export { checkParams } from './checks/params-check.js';
 export { checkHydration } from './checks/hydration-check.js';
 
+// Output formatting utilities
+export { formatIssue, formatIssues } from './utils/format-issue.js';
+export { formatIssueJson, formatResultJson } from './utils/format-json.js';
+
 export type {
   RouteDefinition,
   LinkReference,
@@ -31,3 +35,5 @@ export type {
   FixResult,
   CliOptions,
 } from './types.js';
+
+export type { JsonIssue, JsonOutput } from './utils/format-json.js';
