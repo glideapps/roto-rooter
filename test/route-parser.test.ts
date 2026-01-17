@@ -14,11 +14,12 @@ describe('route-parser', () => {
     it('should parse routes from app/routes.ts', () => {
       const routes = parseRoutes(fixturesDir);
 
-      expect(routes).toHaveLength(4);
+      expect(routes).toHaveLength(5);
       expect(routes.map((r) => r.path)).toEqual([
         '/',
         '/employees',
         '/employees/:id',
+        '/employees/:id/edit',
         '/tasks',
       ]);
     });

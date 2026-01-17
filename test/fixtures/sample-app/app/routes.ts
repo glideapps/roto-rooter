@@ -5,6 +5,7 @@ export default [
     route('/', 'routes/dashboard.tsx', { id: 'home' }),
     route('/employees', 'routes/employees.tsx'),
     route('/employees/:id', 'routes/employees.$id.tsx'),
+    route('/employees/:id/edit', 'routes/employees.$id.edit.tsx'),
     route('/tasks', 'routes/tasks.tsx'),
   ]),
 ] satisfies RouteConfig;
