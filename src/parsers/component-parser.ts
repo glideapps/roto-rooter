@@ -5,6 +5,7 @@ import type {
   LinkReference,
   FormReference,
   DataHookReference,
+  HydrationRisk,
 } from '../types.js';
 import {
   parseFile,
@@ -27,10 +28,40 @@ export function parseComponent(filePath: string): ComponentAnalysis {
   const links: LinkReference[] = [];
   const forms: FormReference[] = [];
   const dataHooks: DataHookReference[] = [];
+  const hydrationRisks: HydrationRisk[] = [];
   let hasLoader = false;
   let hasAction = false;
 
+  // Track context for hydration analysis
+  const useEffectStack: ts.Node[] = [];
+  const suppressWarningElements = new Set<ts.Node>();
+
+  // First pass: find all elements with suppressHydrationWarning
   walkAst(sourceFile, (node) => {
+    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
+      if (hasSuppressHydrationWarning(node)) {
+        suppressWarningElements.add(node);
+      }
+    }
+  });
+
+  walkAst(sourceFile, (node) => {
+    // Track useEffect boundaries
+    if (isCallTo(node, 'useEffect') || isCallTo(node, 'useLayoutEffect')) {
+      useEffectStack.push(node);
+    }
+
+    // Detect hydration-risky patterns
+    const hydrationRisk = detectHydrationRisk(
+      node,
+      sourceFile,
+      filePath,
+      useEffectStack.length > 0,
+      isInsideSuppressedElement(node, suppressWarningElements)
+    );
+    if (hydrationRisk) {
+      hydrationRisks.push(hydrationRisk);
+    }
     // Check for Link components
     if (isJsxElementWithName(node, 'Link')) {
       const link = extractLinkReference(node, sourceFile, filePath);
@@ -131,6 +162,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     links,
     forms,
     dataHooks,
+    hydrationRisks,
     hasLoader,
     hasAction,
   };
@@ -465,4 +497,224 @@ function isExternalOrHash(url: string): boolean {
  */
 function normalizeToPattern(href: string): string {
   return href;
+}
+
+/**
+ * Check if a JSX element has suppressHydrationWarning attribute
+ */
+function hasSuppressHydrationWarning(
+  element: ts.JsxElement | ts.JsxSelfClosingElement
+): boolean {
+  const attr = getJsxAttribute(element, 'suppressHydrationWarning');
+  if (!attr) return false;
+
+  // suppressHydrationWarning (no value) or suppressHydrationWarning={true}
+  if (!attr.initializer) return true;
+
+  if (ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
+    if (
+      attr.initializer.expression.kind === ts.SyntaxKind.TrueKeyword ||
+      (ts.isIdentifier(attr.initializer.expression) &&
+        attr.initializer.expression.text === 'true')
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Check if a node is inside an element with suppressHydrationWarning
+ */
+function isInsideSuppressedElement(
+  node: ts.Node,
+  suppressedElements: Set<ts.Node>
+): boolean {
+  let current: ts.Node | undefined = node;
+  while (current) {
+    if (suppressedElements.has(current)) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
+/**
+ * Detect hydration-risky patterns in a node
+ */
+function detectHydrationRisk(
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+  filePath: string,
+  inUseEffect: boolean,
+  hasSuppressWarning: boolean
+): HydrationRisk | undefined {
+  const pos = getLineAndColumn(sourceFile, node.getStart());
+  const location = { file: filePath, line: pos.line, column: pos.column };
+
+  // Detect new Date() calls
+  if (ts.isNewExpression(node)) {
+    if (ts.isIdentifier(node.expression) && node.expression.text === 'Date') {
+      return {
+        type: 'date-render',
+        location,
+        code: node.getText(sourceFile),
+        inUseEffect,
+        hasSuppressWarning,
+      };
+    }
+  }
+
+  // Detect Date.now(), Date.parse() etc
+  if (ts.isCallExpression(node)) {
+    const expr = node.expression;
+
+    // Date.now(), Date.parse()
+    if (ts.isPropertyAccessExpression(expr)) {
+      if (
+        ts.isIdentifier(expr.expression) &&
+        expr.expression.text === 'Date' &&
+        ['now', 'parse'].includes(expr.name.text)
+      ) {
+        return {
+          type: 'date-render',
+          location,
+          code: node.getText(sourceFile),
+          inUseEffect,
+          hasSuppressWarning,
+        };
+      }
+
+      // Math.random()
+      if (
+        ts.isIdentifier(expr.expression) &&
+        expr.expression.text === 'Math' &&
+        expr.name.text === 'random'
+      ) {
+        return {
+          type: 'random-value',
+          location,
+          code: node.getText(sourceFile),
+          inUseEffect,
+          hasSuppressWarning,
+        };
+      }
+
+      // .toLocaleString(), .toLocaleDateString(), .toLocaleTimeString()
+      if (
+        ['toLocaleString', 'toLocaleDateString', 'toLocaleTimeString'].includes(
+          expr.name.text
+        )
+      ) {
+        // Check if options with timeZone are provided
+        if (!hasTimezoneOption(node)) {
+          return {
+            type: 'locale-format',
+            location,
+            code: node.getText(sourceFile),
+            inUseEffect,
+            hasSuppressWarning,
+          };
+        }
+      }
+    }
+
+    // uuid(), nanoid(), crypto.randomUUID()
+    if (ts.isIdentifier(expr)) {
+      if (['uuid', 'nanoid', 'uuidv4', 'generateId'].includes(expr.text)) {
+        return {
+          type: 'random-value',
+          location,
+          code: node.getText(sourceFile),
+          inUseEffect,
+          hasSuppressWarning,
+        };
+      }
+    }
+  }
+
+  // new Intl.DateTimeFormat without timeZone
+  if (ts.isNewExpression(node)) {
+    const newExpr = node.expression;
+    if (
+      ts.isPropertyAccessExpression(newExpr) &&
+      ts.isIdentifier(newExpr.expression) &&
+      newExpr.expression.text === 'Intl' &&
+      newExpr.name.text === 'DateTimeFormat'
+    ) {
+      if (!hasTimezoneOption(node)) {
+        return {
+          type: 'locale-format',
+          location,
+          code: node.getText(sourceFile),
+          inUseEffect,
+          hasSuppressWarning,
+        };
+      }
+    }
+  }
+
+  // Detect browser-only API access: window, localStorage, sessionStorage, document
+  if (ts.isIdentifier(node)) {
+    const browserApis = [
+      'window',
+      'localStorage',
+      'sessionStorage',
+      'document',
+      'navigator',
+      'location',
+    ];
+    if (browserApis.includes(node.text)) {
+      // Make sure it's an access, not a declaration or type
+      const parent = node.parent;
+      if (
+        parent &&
+        !ts.isTypeReferenceNode(parent) &&
+        !ts.isVariableDeclaration(parent) &&
+        !ts.isParameter(parent)
+      ) {
+        // Check if it's actually being accessed (e.g., window.innerWidth)
+        if (
+          ts.isPropertyAccessExpression(parent) &&
+          parent.expression === node
+        ) {
+          return {
+            type: 'browser-api',
+            location,
+            code: parent.getText(sourceFile),
+            inUseEffect,
+            hasSuppressWarning,
+          };
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Check if a call expression has timeZone option in its arguments
+ */
+function hasTimezoneOption(
+  call: ts.CallExpression | ts.NewExpression
+): boolean {
+  const args = call.arguments;
+  if (!args || args.length < 2) return false;
+
+  // Look for options object with timeZone property
+  const optionsArg = args[1];
+  if (ts.isObjectLiteralExpression(optionsArg)) {
+    for (const prop of optionsArg.properties) {
+      if (ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name)) {
+        if (prop.name.text === 'timeZone') {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
 }

@@ -29,21 +29,68 @@ Add a new check to roto-rooter: `/add-check <check-name>`
 
 5. **Parser** (if needed) - Extend `component-parser.ts`, `route-parser.ts`, or `action-parser.ts` for new AST patterns
 
-6. **Verify** - Run `npm run test:run`
+6. **Documentation** - Update `README.md` and `CLAUDE.md` to list the new check
+
+7. **Verify** - Run `npm run test:run`
+
+## Summary Output
+
+After implementing the check, output a summary that includes example CLI output showing what the check failure looks like:
+
+```
+## Check Implementation Complete: <check-name>
+
+### Files Changed
+- src/types.ts - Added '<check-name>' to category union
+- src/checks/<check-name>-check.ts - New check implementation
+- src/analyzer.ts - Registered check
+- test/<check-name>-check.test.ts - Tests
+- README.md, CLAUDE.md - Documentation
+
+### Example Output
+$ rr app/routes/example.tsx
+app/routes/example.tsx:15:5 error [<check-name>] <Error message here>
+  |
+  | <code snippet showing the problematic line>
+  |
+  Suggestion: <suggestion text>
+
+Found 1 issue (1 error, 0 warnings)
+```
 
 ## Issue Guidelines
 
-- `error` = runtime failure; `warning` = potential problem
+### Severity Levels
+
+**`error`** - Use for issues that will:
+
+- Cause render failures or runtime exceptions
+- Result in inconsistent behavior across users (e.g., different locales, timezones, browsers)
+- Break functionality in ways users will notice (missing data, broken navigation, form failures)
+- Cause hydration mismatches that force React to discard and re-render
+
+**`warning`** - Use for issues that:
+
+- Log errors to the browser console but don't affect user-visible behavior
+- Have a less efficient but functional fallback (e.g., performance degradation)
+- May cause problems only in edge cases or specific configurations
+- Are best practices violations that don't directly impact users
+
+When in doubt, prefer `error`. Users can configure checks to ignore specific issues, but they can't escalate warnings they missed.
+
+### Message Format
+
 - Messages: specific, actionable, include the problematic value
 - Always include accurate location (line/column) and code snippet
 
 ## Existing Checks
 
-| Category    | File                   | Validates                                           |
-| ----------- | ---------------------- | --------------------------------------------------- |
-| links       | `link-check.ts`        | `<Link>`, `<a>`, `redirect()`, `navigate()` targets |
-| forms       | `form-check.ts`        | `<Form>` actions have corresponding exports         |
-| loader      | `loader-check.ts`      | `useLoaderData()`/`useActionData()` usage           |
-| params      | `params-check.ts`      | `useParams()` accesses defined route params         |
-| interactive | `interactive-check.ts` | (TODO) Button handlers                              |
-| a11y        | `a11y-check.ts`        | (TODO) Accessibility                                |
+| Category    | File                   | Validates                                                  |
+| ----------- | ---------------------- | ---------------------------------------------------------- |
+| links       | `link-check.ts`        | `<Link>`, `<a>`, `redirect()`, `navigate()` targets        |
+| forms       | `form-check.ts`        | `<Form>` actions have corresponding exports                |
+| loader      | `loader-check.ts`      | `useLoaderData()`/`useActionData()` usage                  |
+| params      | `params-check.ts`      | `useParams()` accesses defined route params                |
+| hydration   | `hydration-check.ts`   | SSR hydration mismatch risks (dates, locale, browser APIs) |
+| interactive | `interactive-check.ts` | (placeholder) Button handlers                              |
+| a11y        | `a11y-check.ts`        | (placeholder) Accessibility                                |

@@ -59,6 +59,27 @@ export interface DataHookReference {
 }
 
 /**
+ * Represents a potential SSR hydration mismatch pattern
+ */
+export interface HydrationRisk {
+  /** The type of risky pattern */
+  type:
+    | 'date-render' // new Date(), Date.now() in render
+    | 'locale-format' // Intl.DateTimeFormat, toLocaleString without timezone
+    | 'random-value' // Math.random(), uuid() in render
+    | 'browser-api' // window, localStorage, document outside useEffect
+    | 'loader-date'; // Date field from loader rendered without handling
+  /** Source location */
+  location: SourceLocation;
+  /** The code snippet */
+  code: string;
+  /** Whether this is inside useEffect (safe) */
+  inUseEffect: boolean;
+  /** Whether suppressHydrationWarning is present on parent element */
+  hasSuppressWarning: boolean;
+}
+
+/**
  * Analysis result for a single component file
  */
 export interface ComponentAnalysis {
@@ -70,6 +91,8 @@ export interface ComponentAnalysis {
   forms: FormReference[];
   /** All data hook references found */
   dataHooks: DataHookReference[];
+  /** All hydration risk patterns found */
+  hydrationRisks: HydrationRisk[];
   /** Whether this file exports a loader function */
   hasLoader: boolean;
   /** Whether this file exports an action function */
@@ -90,7 +113,14 @@ export interface SourceLocation {
  */
 export interface AnalyzerIssue {
   /** The check category */
-  category: 'links' | 'forms' | 'loader' | 'params' | 'interactive' | 'a11y';
+  category:
+    | 'links'
+    | 'forms'
+    | 'loader'
+    | 'params'
+    | 'interactive'
+    | 'a11y'
+    | 'hydration';
   /** Severity level */
   severity: 'error' | 'warning';
   /** Human-readable message */

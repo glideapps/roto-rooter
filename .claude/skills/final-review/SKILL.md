@@ -36,14 +36,23 @@ npm run typecheck && npm run lint && npm run build && npm test
 
 **Fix:** Resolve type errors, lint errors, build errors. Re-run until zero errors/warnings.
 
-### 4. Documentation
+### 4. Documentation Consistency
 
-- Verify README.md reflects current project state
-- Ensure new features are documented
+Verify all documentation sources are consistent:
 
-**Fix:** Update stale or missing documentation.
+- `README.md` - User-facing documentation
+- `CLAUDE.md` - Agent instructions
+- `.claude/skills/add-check/SKILL.md` - Existing checks table
 
-### 5. PR Metadata
+Check for:
+
+- All checks in `src/checks/` are listed in all docs
+- Placeholder vs implemented status is consistent across docs
+- Check descriptions match between files
+
+**Fix:** Update any inconsistent or stale documentation.
+
+### 5. PR Metadata (if PR exists)
 
 - `gh pr view` - check current title/description
 - `git log main..HEAD --oneline` - see commits
@@ -72,8 +81,8 @@ Flagged: <any invalid checks>
 [x] typecheck/lint/build/test all pass
 Changes: <code fixes>
 
-### Documentation
-[x] Up to date
+### Documentation Consistency
+[x] All docs consistent
 Changes: <doc updates>
 
 ### PR Metadata
