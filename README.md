@@ -1,30 +1,30 @@
-# react-router-analyzer
+# roto-rooter
 
-Static analysis tool for React Router 7 applications that catches runtime errors at build time.
+Static analysis and functional verifier tool for React Router applications.
 
 ## Installation
 
 ```bash
-npm install react-router-analyzer
+npm install -g roto-rooter
 ```
 
 ## Usage
 
 ```bash
 # Check all files
-npx react-router-analyzer
+rr
 
 # Check specific file(s)
-npx react-router-analyzer app/routes/employees.tsx
+rr app/routes/employees.tsx
 
 # Run specific checks only
-npx react-router-analyzer --check links,forms
+rr --check links,forms
 
 # Output as JSON
-npx react-router-analyzer --format json
+rr --format json
 
-# Set root directory
-npx react-router-analyzer --root ./my-app
+# Set app directory
+rr --app ./my-app
 ```
 
 ## Checks
@@ -33,13 +33,11 @@ npx react-router-analyzer --root ./my-app
 - **forms**: Validates forms submit to routes with action exports
 - **loader**: Validates useLoaderData() is only used in routes with loaders
 - **params**: Validates useParams() accesses only params defined in the route
-- **interactive**: Validates interactive elements have handlers (coming soon)
-- **a11y**: Accessibility checks requiring cross-element analysis (coming soon)
 
 ## Programmatic API
 
 ```typescript
-import { analyze } from "react-router-analyzer";
+import { analyze } from "roto-rooter";
 
 const result = analyze({
   root: "./my-app",
