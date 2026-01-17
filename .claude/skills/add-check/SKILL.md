@@ -85,12 +85,10 @@ When in doubt, prefer `error`. Users can configure checks to ignore specific iss
 
 ## Existing Checks
 
-| Category    | File                   | Validates                                                  |
-| ----------- | ---------------------- | ---------------------------------------------------------- |
-| links       | `link-check.ts`        | `<Link>`, `<a>`, `redirect()`, `navigate()` targets        |
-| forms       | `form-check.ts`        | `<Form>` actions have corresponding exports                |
-| loader      | `loader-check.ts`      | `useLoaderData()`/`useActionData()` usage                  |
-| params      | `params-check.ts`      | `useParams()` accesses defined route params                |
-| hydration   | `hydration-check.ts`   | SSR hydration mismatch risks (dates, locale, browser APIs) |
-| interactive | `interactive-check.ts` | (placeholder) Button handlers                              |
-| a11y        | `a11y-check.ts`        | (placeholder) Accessibility                                |
+| Category  | File                 | Validates                                                  |
+| --------- | -------------------- | ---------------------------------------------------------- |
+| links     | `link-check.ts`      | `<Link>`, `<a>`, `redirect()`, `navigate()` targets        |
+| forms     | `form-check.ts`      | `<Form>` actions have corresponding exports                |
+| loader    | `loader-check.ts`    | `useLoaderData()`/`useActionData()` usage                  |
+| params    | `params-check.ts`    | `useParams()` accesses defined route params                |
+| hydration | `hydration-check.ts` | SSR hydration mismatch risks (dates, locale, browser APIs) |

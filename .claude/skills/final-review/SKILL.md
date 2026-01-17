@@ -11,6 +11,10 @@ Pre-merge review: `/final-review`
 
 ## Process
 
+### 0. Fetch Latest
+
+Run `git fetch origin main` to ensure comparisons use the latest main branch.
+
 ### 1. Test Coverage
 
 - Run `git diff main --name-only` to identify changed files
@@ -52,7 +56,17 @@ Check for:
 
 **Fix:** Update any inconsistent or stale documentation.
 
-### 5. PR Metadata (if PR exists)
+### 5. Version Update
+
+Check `package.json` version against change scope:
+
+- **Major:** Breaking changes
+- **Minor:** New checks added
+- **Patch:** Any other change
+
+**Fix:** Update version in `package.json` if needed.
+
+### 6. PR Metadata (if PR exists)
 
 - `gh pr view` - check current title/description
 - `git log main..HEAD --oneline` - see commits
@@ -60,7 +74,7 @@ Check for:
 
 **Fix:** Use `gh pr edit --title` and `gh pr edit --body` to update.
 
-### 6. Commit and Push
+### 7. Commit and Push
 
 Stage, commit, and push all fixes made during review.
 
@@ -84,6 +98,10 @@ Changes: <code fixes>
 ### Documentation Consistency
 [x] All docs consistent
 Changes: <doc updates>
+
+### Version Update
+[x] Version updated appropriately
+Changes: <version bump type or "no change needed">
 
 ### PR Metadata
 [x] Title and description accurate

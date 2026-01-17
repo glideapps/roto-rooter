@@ -113,14 +113,7 @@ export interface SourceLocation {
  */
 export interface AnalyzerIssue {
   /** The check category */
-  category:
-    | 'links'
-    | 'forms'
-    | 'loader'
-    | 'params'
-    | 'interactive'
-    | 'a11y'
-    | 'hydration';
+  category: 'links' | 'forms' | 'loader' | 'params' | 'hydration';
   /** Severity level */
   severity: 'error' | 'warning';
   /** Human-readable message */
