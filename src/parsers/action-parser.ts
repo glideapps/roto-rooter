@@ -1,6 +1,6 @@
-import * as fs from "fs";
-import ts from "typescript";
-import { parseFile, walkAst, isExported } from "../utils/ast-utils.js";
+import * as fs from 'fs';
+import ts from 'typescript';
+import { parseFile, walkAst, isExported } from '../utils/ast-utils.js';
 
 export interface RouteExports {
   hasLoader: boolean;
@@ -13,7 +13,7 @@ export interface RouteExports {
  * Parse a route file to check for loader/action exports
  */
 export function parseRouteExports(filePath: string): RouteExports {
-  const content = fs.readFileSync(filePath, "utf-8");
+  const content = fs.readFileSync(filePath, 'utf-8');
   const sourceFile = parseFile(filePath, content);
 
   let hasLoader = false;
@@ -29,11 +29,11 @@ export function parseRouteExports(filePath: string): RouteExports {
         node.getStart()
       );
 
-      if (name === "loader") {
+      if (name === 'loader') {
         hasLoader = true;
         loaderLocation = { line: line + 1, column: character + 1 };
       }
-      if (name === "action") {
+      if (name === 'action') {
         hasAction = true;
         actionLocation = { line: line + 1, column: character + 1 };
       }
@@ -48,11 +48,11 @@ export function parseRouteExports(filePath: string): RouteExports {
             decl.getStart()
           );
 
-          if (name === "loader") {
+          if (name === 'loader') {
             hasLoader = true;
             loaderLocation = { line: line + 1, column: character + 1 };
           }
-          if (name === "action") {
+          if (name === 'action') {
             hasAction = true;
             actionLocation = { line: line + 1, column: character + 1 };
           }

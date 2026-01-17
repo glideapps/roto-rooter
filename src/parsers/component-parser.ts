@@ -1,12 +1,11 @@
-import * as fs from "fs";
-import ts from "typescript";
+import * as fs from 'fs';
+import ts from 'typescript';
 import type {
   ComponentAnalysis,
   LinkReference,
   FormReference,
   DataHookReference,
-  SourceLocation,
-} from "../types.js";
+} from '../types.js';
 import {
   parseFile,
   walkAst,
@@ -16,13 +15,13 @@ import {
   isCallTo,
   isExported,
   getLineAndColumn,
-} from "../utils/ast-utils.js";
+} from '../utils/ast-utils.js';
 
 /**
  * Parse a TSX component file and extract links, forms, and hooks
  */
 export function parseComponent(filePath: string): ComponentAnalysis {
-  const content = fs.readFileSync(filePath, "utf-8");
+  const content = fs.readFileSync(filePath, 'utf-8');
   const sourceFile = parseFile(filePath, content);
 
   const links: LinkReference[] = [];
@@ -33,7 +32,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
 
   walkAst(sourceFile, (node) => {
     // Check for Link components
-    if (isJsxElementWithName(node, "Link")) {
+    if (isJsxElementWithName(node, 'Link')) {
       const link = extractLinkReference(node, sourceFile, filePath);
       if (link) {
         links.push(link);
@@ -41,7 +40,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     }
 
     // Check for anchor tags with href
-    if (isJsxElementWithName(node, "a")) {
+    if (isJsxElementWithName(node, 'a')) {
       const link = extractAnchorReference(node, sourceFile, filePath);
       if (link) {
         links.push(link);
@@ -49,7 +48,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     }
 
     // Check for Form components
-    if (isJsxElementWithName(node, "Form")) {
+    if (isJsxElementWithName(node, 'Form')) {
       const form = extractFormReference(node, sourceFile, filePath);
       if (form) {
         forms.push(form);
@@ -57,7 +56,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     }
 
     // Check for redirect() calls
-    if (isCallTo(node, "redirect")) {
+    if (isCallTo(node, 'redirect')) {
       const link = extractRedirectReference(node, sourceFile, filePath);
       if (link) {
         links.push(link);
@@ -67,7 +66,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     // Check for useNavigate().navigate() pattern
     // This is more complex - we'd need to track the variable
     // For now, look for navigate() calls directly
-    if (isCallTo(node, "navigate")) {
+    if (isCallTo(node, 'navigate')) {
       const link = extractNavigateReference(node, sourceFile, filePath);
       if (link) {
         links.push(link);
@@ -75,9 +74,9 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     }
 
     // Check for data hooks
-    if (isCallTo(node, "useLoaderData")) {
+    if (isCallTo(node, 'useLoaderData')) {
       const hookRef = createDataHookReference(
-        "useLoaderData",
+        'useLoaderData',
         node,
         sourceFile,
         filePath
@@ -85,9 +84,9 @@ export function parseComponent(filePath: string): ComponentAnalysis {
       dataHooks.push(hookRef);
     }
 
-    if (isCallTo(node, "useActionData")) {
+    if (isCallTo(node, 'useActionData')) {
       const hookRef = createDataHookReference(
-        "useActionData",
+        'useActionData',
         node,
         sourceFile,
         filePath
@@ -95,7 +94,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
       dataHooks.push(hookRef);
     }
 
-    if (isCallTo(node, "useParams")) {
+    if (isCallTo(node, 'useParams')) {
       const hookRef = extractUseParamsReference(node, sourceFile, filePath);
       dataHooks.push(hookRef);
     }
@@ -103,10 +102,10 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     // Check for loader/action exports
     if (ts.isFunctionDeclaration(node) && node.name) {
       if (isExported(node)) {
-        if (node.name.text === "loader") {
+        if (node.name.text === 'loader') {
           hasLoader = true;
         }
-        if (node.name.text === "action") {
+        if (node.name.text === 'action') {
           hasAction = true;
         }
       }
@@ -116,10 +115,10 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     if (ts.isVariableStatement(node) && isExported(node)) {
       for (const decl of node.declarationList.declarations) {
         if (ts.isIdentifier(decl.name)) {
-          if (decl.name.text === "loader") {
+          if (decl.name.text === 'loader') {
             hasLoader = true;
           }
-          if (decl.name.text === "action") {
+          if (decl.name.text === 'action') {
             hasAction = true;
           }
         }
@@ -146,8 +145,8 @@ function extractLinkReference(
   filePath: string
 ): LinkReference | undefined {
   // Check for "to" or "href" attribute
-  const toAttr = getJsxAttribute(element, "to");
-  const hrefAttr = getJsxAttribute(element, "href");
+  const toAttr = getJsxAttribute(element, 'to');
+  const hrefAttr = getJsxAttribute(element, 'href');
   const attr = toAttr || hrefAttr;
 
   if (!attr) {
@@ -176,7 +175,7 @@ function extractLinkReference(
       line: pos.line,
       column: pos.column,
     },
-    type: "link",
+    type: 'link',
   };
 }
 
@@ -188,7 +187,7 @@ function extractAnchorReference(
   sourceFile: ts.SourceFile,
   filePath: string
 ): LinkReference | undefined {
-  const hrefAttr = getJsxAttribute(element, "href");
+  const hrefAttr = getJsxAttribute(element, 'href');
   if (!hrefAttr) {
     return undefined;
   }
@@ -214,7 +213,7 @@ function extractAnchorReference(
       line: pos.line,
       column: pos.column,
     },
-    type: "link",
+    type: 'link',
   };
 }
 
@@ -226,8 +225,8 @@ function extractFormReference(
   sourceFile: ts.SourceFile,
   filePath: string
 ): FormReference {
-  const actionAttr = getJsxAttribute(element, "action");
-  const methodAttr = getJsxAttribute(element, "method");
+  const actionAttr = getJsxAttribute(element, 'action');
+  const methodAttr = getJsxAttribute(element, 'method');
 
   let action: string | undefined;
   if (actionAttr) {
@@ -235,13 +234,13 @@ function extractFormReference(
     action = value?.value;
   }
 
-  let method: FormReference["method"] = "post";
+  let method: FormReference['method'] = 'post';
   if (methodAttr) {
     const value = getJsxAttributeStringValue(methodAttr);
     if (value) {
       const m = value.value.toLowerCase();
-      if (["get", "post", "put", "patch", "delete"].includes(m)) {
-        method = m as FormReference["method"];
+      if (['get', 'post', 'put', 'patch', 'delete'].includes(m)) {
+        method = m as FormReference['method'];
       }
     }
   }
@@ -268,13 +267,17 @@ function extractFormReference(
  */
 function extractFormInputNames(
   element: ts.JsxElement | ts.JsxSelfClosingElement,
-  sourceFile: ts.SourceFile
+  _sourceFile: ts.SourceFile
 ): string[] {
   const names: string[] = [];
 
   walkAst(element, (node) => {
-    if (isJsxElementWithName(node, "input") || isJsxElementWithName(node, "select") || isJsxElementWithName(node, "textarea")) {
-      const nameAttr = getJsxAttribute(node, "name");
+    if (
+      isJsxElementWithName(node, 'input') ||
+      isJsxElementWithName(node, 'select') ||
+      isJsxElementWithName(node, 'textarea')
+    ) {
+      const nameAttr = getJsxAttribute(node, 'name');
       if (nameAttr) {
         const value = getJsxAttributeStringValue(nameAttr);
         if (value) {
@@ -308,7 +311,7 @@ function extractRedirectReference(
   } else if (ts.isTemplateExpression(arg)) {
     let pattern = arg.head.text;
     for (const span of arg.templateSpans) {
-      pattern += ":param" + span.literal.text;
+      pattern += ':param' + span.literal.text;
     }
     value = { value: pattern, isDynamic: true };
   } else if (ts.isNoSubstitutionTemplateLiteral(arg)) {
@@ -330,7 +333,7 @@ function extractRedirectReference(
       line: pos.line,
       column: pos.column,
     },
-    type: "redirect",
+    type: 'redirect',
   };
 }
 
@@ -355,7 +358,7 @@ function extractNavigateReference(
   } else if (ts.isTemplateExpression(arg)) {
     let pattern = arg.head.text;
     for (const span of arg.templateSpans) {
-      pattern += ":param" + span.literal.text;
+      pattern += ':param' + span.literal.text;
     }
     value = { value: pattern, isDynamic: true };
   } else if (ts.isNoSubstitutionTemplateLiteral(arg)) {
@@ -377,7 +380,7 @@ function extractNavigateReference(
       line: pos.line,
       column: pos.column,
     },
-    type: "navigate",
+    type: 'navigate',
   };
 }
 
@@ -385,7 +388,7 @@ function extractNavigateReference(
  * Create a data hook reference
  */
 function createDataHookReference(
-  hook: "useLoaderData" | "useActionData",
+  hook: 'useLoaderData' | 'useActionData',
   call: ts.CallExpression,
   sourceFile: ts.SourceFile,
   filePath: string
@@ -432,7 +435,7 @@ function extractUseParamsReference(
   }
 
   return {
-    hook: "useParams",
+    hook: 'useParams',
     accessedParams: accessedParams.length > 0 ? accessedParams : undefined,
     location: {
       file: filePath,
@@ -447,12 +450,12 @@ function extractUseParamsReference(
  */
 function isExternalOrHash(url: string): boolean {
   return (
-    url.startsWith("http://") ||
-    url.startsWith("https://") ||
-    url.startsWith("mailto:") ||
-    url.startsWith("tel:") ||
-    url.startsWith("#") ||
-    url.startsWith("//")
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('mailto:') ||
+    url.startsWith('tel:') ||
+    url.startsWith('#') ||
+    url.startsWith('//')
   );
 }
 

@@ -1,7 +1,7 @@
-import { Link } from "react-router";
+import { Link } from 'react-router';
 
 export function loader() {
-  return { message: "Welcome" };
+  return { message: 'Welcome' };
 }
 
 export default function Dashboard() {

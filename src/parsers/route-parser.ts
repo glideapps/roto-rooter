@@ -1,20 +1,20 @@
-import * as fs from "fs";
-import * as path from "path";
-import ts from "typescript";
-import type { RouteDefinition } from "../types.js";
-import { parseFile, walkAst } from "../utils/ast-utils.js";
+import * as fs from 'fs';
+import * as path from 'path';
+import ts from 'typescript';
+import type { RouteDefinition } from '../types.js';
+import { parseFile, walkAst } from '../utils/ast-utils.js';
 
 /**
  * Parse the app/routes.ts file and extract route definitions
  */
 export function parseRoutes(rootDir: string): RouteDefinition[] {
-  const routesPath = path.join(rootDir, "app", "routes.ts");
+  const routesPath = path.join(rootDir, 'app', 'routes.ts');
 
   if (!fs.existsSync(routesPath)) {
     throw new Error(`Routes file not found: ${routesPath}`);
   }
 
-  const content = fs.readFileSync(routesPath, "utf-8");
+  const content = fs.readFileSync(routesPath, 'utf-8');
   const sourceFile = parseFile(routesPath, content);
 
   const routes: RouteDefinition[] = [];
@@ -59,15 +59,15 @@ function extractRoutesFromExpression(
       ? expr.expression.text
       : undefined;
 
-    if (funcName === "route") {
+    if (funcName === 'route') {
       const route = parseRouteCall(expr, rootDir);
       if (route) {
         routes.push(route);
       }
-    } else if (funcName === "layout") {
+    } else if (funcName === 'layout') {
       const layoutRoutes = parseLayoutCall(expr, rootDir);
       routes.push(...layoutRoutes);
-    } else if (funcName === "index") {
+    } else if (funcName === 'index') {
       const route = parseIndexCall(expr, rootDir);
       if (route) {
         routes.push(route);
@@ -119,7 +119,7 @@ function parseRouteCall(
         if (
           ts.isPropertyAssignment(prop) &&
           ts.isIdentifier(prop.name) &&
-          prop.name.text === "id" &&
+          prop.name.text === 'id' &&
           ts.isStringLiteral(prop.initializer)
         ) {
           id = prop.initializer.text;
@@ -178,7 +178,7 @@ function parseLayoutCall(
  */
 function parseIndexCall(
   call: ts.CallExpression,
-  rootDir: string
+  _rootDir: string
 ): RouteDefinition | undefined {
   const args = call.arguments;
   if (args.length < 1) {
@@ -190,7 +190,7 @@ function parseIndexCall(
     return undefined;
   }
 
-  return createRouteDefinition("/", fileArg.text, undefined, undefined);
+  return createRouteDefinition('/', fileArg.text, undefined, undefined);
 }
 
 /**
@@ -235,10 +235,10 @@ function extractParams(routePath: string): string[] {
  */
 function pathToRegex(routePath: string): RegExp {
   // Escape special regex chars except :
-  let pattern = routePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let pattern = routePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   // Replace :param with a capturing group that matches any non-slash characters
-  pattern = pattern.replace(/:(\w+)/g, "([^/]+)");
+  pattern = pattern.replace(/:(\w+)/g, '([^/]+)');
 
   return new RegExp(`^${pattern}$`);
 }
@@ -292,10 +292,10 @@ export function matchDynamicPattern(
   routes: RouteDefinition[]
 ): RouteDefinition | undefined {
   // Normalize the pattern to compare segment counts and static parts
-  const patternParts = pattern.split("/").filter(Boolean);
+  const patternParts = pattern.split('/').filter(Boolean);
 
   for (const route of routes) {
-    const routeParts = route.path.split("/").filter(Boolean);
+    const routeParts = route.path.split('/').filter(Boolean);
 
     if (patternParts.length !== routeParts.length) {
       continue;
@@ -307,12 +307,12 @@ export function matchDynamicPattern(
       const routePart = routeParts[i];
 
       // Both dynamic - OK
-      if (patternPart.startsWith(":") && routePart.startsWith(":")) {
+      if (patternPart.startsWith(':') && routePart.startsWith(':')) {
         continue;
       }
 
       // Both static - must match exactly
-      if (!patternPart.startsWith(":") && !routePart.startsWith(":")) {
+      if (!patternPart.startsWith(':') && !routePart.startsWith(':')) {
         if (patternPart !== routePart) {
           matches = false;
           break;
@@ -321,7 +321,7 @@ export function matchDynamicPattern(
       }
 
       // One dynamic, one static - OK (dynamic in pattern matches any route segment)
-      if (patternPart.startsWith(":")) {
+      if (patternPart.startsWith(':')) {
         continue;
       }
 

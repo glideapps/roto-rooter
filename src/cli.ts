@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
-import * as fs from "fs";
-import * as path from "path";
-import { fileURLToPath } from "url";
-import { analyze } from "./analyzer.js";
-import type { AnalyzerIssue, CliOptions } from "./types.js";
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { analyze } from './analyzer.js';
+import type { AnalyzerIssue, CliOptions } from './types.js';
 
 function getVersion(): string {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const packageJsonPath = path.resolve(__dirname, "..", "package.json");
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+  const packageJsonPath = path.resolve(__dirname, '..', 'package.json');
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
   return packageJson.version;
 }
 
@@ -29,14 +29,14 @@ function main(): void {
 
   const result = analyze(options);
 
-  if (options.format === "json") {
+  if (options.format === 'json') {
     console.log(JSON.stringify(result, null, 2));
   } else {
     printTextOutput(result.issues);
   }
 
   // Exit with error code if there are issues
-  const errorCount = result.issues.filter((i) => i.severity === "error").length;
+  const errorCount = result.issues.filter((i) => i.severity === 'error').length;
   if (errorCount > 0) {
     process.exit(1);
   }
@@ -51,7 +51,7 @@ function parseArgs(args: string[]): ParsedArgs {
   const options: ParsedArgs = {
     files: [],
     checks: [],
-    format: "text",
+    format: 'text',
     root: process.cwd(),
     help: false,
     version: false,
@@ -61,37 +61,37 @@ function parseArgs(args: string[]): ParsedArgs {
   while (i < args.length) {
     const arg = args[i];
 
-    if (arg === "--help" || arg === "-h") {
+    if (arg === '--help' || arg === '-h') {
       options.help = true;
       i++;
       continue;
     }
 
-    if (arg === "--version" || arg === "-v") {
+    if (arg === '--version' || arg === '-v') {
       options.version = true;
       i++;
       continue;
     }
 
-    if (arg === "--format" || arg === "-f") {
+    if (arg === '--format' || arg === '-f') {
       const value = args[i + 1];
-      if (value === "json" || value === "text") {
+      if (value === 'json' || value === 'text') {
         options.format = value;
       }
       i += 2;
       continue;
     }
 
-    if (arg === "--check" || arg === "-c") {
+    if (arg === '--check' || arg === '-c') {
       const value = args[i + 1];
       if (value) {
-        options.checks = value.split(",").map((c) => c.trim());
+        options.checks = value.split(',').map((c) => c.trim());
       }
       i += 2;
       continue;
     }
 
-    if (arg === "--app" || arg === "-a") {
+    if (arg === '--app' || arg === '-a') {
       const value = args[i + 1];
       if (value) {
         options.root = path.resolve(value);
@@ -101,7 +101,7 @@ function parseArgs(args: string[]): ParsedArgs {
     }
 
     // Positional argument - file to check
-    if (!arg.startsWith("-")) {
+    if (!arg.startsWith('-')) {
       options.files.push(arg);
     }
 
@@ -149,20 +149,20 @@ EXAMPLES:
 
 function printTextOutput(issues: AnalyzerIssue[]): void {
   if (issues.length === 0) {
-    console.log("No issues found.");
+    console.log('No issues found.');
     return;
   }
 
-  const errorCount = issues.filter((i) => i.severity === "error").length;
-  const warningCount = issues.filter((i) => i.severity === "warning").length;
+  const errorCount = issues.filter((i) => i.severity === 'error').length;
+  const warningCount = issues.filter((i) => i.severity === 'warning').length;
 
   console.log(
-    `\nrr found ${issues.length} issue${issues.length === 1 ? "" : "s"}:`
+    `\nrr found ${issues.length} issue${issues.length === 1 ? '' : 's'}:`
   );
   console.log();
 
   for (const issue of issues) {
-    const icon = issue.severity === "error" ? "[error]" : "[warning]";
+    const icon = issue.severity === 'error' ? '[error]' : '[warning]';
     const relativePath = path.relative(process.cwd(), issue.location.file);
 
     console.log(
@@ -179,9 +179,9 @@ function printTextOutput(issues: AnalyzerIssue[]): void {
   }
 
   console.log(
-    `Summary: ${errorCount} error${errorCount === 1 ? "" : "s"}, ${warningCount} warning${warningCount === 1 ? "" : "s"}`
+    `Summary: ${errorCount} error${errorCount === 1 ? '' : 's'}, ${warningCount} warning${warningCount === 1 ? '' : 's'}`
   );
-  console.log("Run with --help for options.");
+  console.log('Run with --help for options.');
 }
 
 main();

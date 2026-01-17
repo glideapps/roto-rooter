@@ -1,20 +1,20 @@
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from 'fs';
+import * as path from 'path';
 import type {
   AnalyzerResult,
   AnalyzerIssue,
   ComponentAnalysis,
   RouteDefinition,
   CliOptions,
-} from "./types.js";
-import { parseRoutes } from "./parsers/route-parser.js";
-import { parseComponent } from "./parsers/component-parser.js";
-import { checkLinks } from "./checks/link-check.js";
-import { checkForms } from "./checks/form-check.js";
-import { checkLoaders } from "./checks/loader-check.js";
-import { checkParams } from "./checks/params-check.js";
-import { checkInteractive } from "./checks/interactive-check.js";
-import { checkA11y } from "./checks/a11y-check.js";
+} from './types.js';
+import { parseRoutes } from './parsers/route-parser.js';
+import { parseComponent } from './parsers/component-parser.js';
+import { checkLinks } from './checks/link-check.js';
+import { checkForms } from './checks/form-check.js';
+import { checkLoaders } from './checks/loader-check.js';
+import { checkParams } from './checks/params-check.js';
+import { checkInteractive } from './checks/interactive-check.js';
+import { checkA11y } from './checks/a11y-check.js';
 
 /**
  * Main analyzer - orchestrates parsing and checking
@@ -31,14 +31,14 @@ export function analyze(options: CliOptions): AnalyzerResult {
     return {
       issues: [
         {
-          category: "links",
-          severity: "error",
+          category: 'links',
+          severity: 'error',
           message:
             error instanceof Error
               ? error.message
-              : "Failed to parse routes file",
+              : 'Failed to parse routes file',
           location: {
-            file: path.join(root, "app", "routes.ts"),
+            file: path.join(root, 'app', 'routes.ts'),
             line: 1,
             column: 1,
           },
@@ -67,30 +67,32 @@ export function analyze(options: CliOptions): AnalyzerResult {
   // Run checks
   const issues: AnalyzerIssue[] = [];
   const enabledChecks = new Set(
-    checks.length > 0 ? checks : ["links", "forms", "loader", "params", "interactive", "a11y"]
+    checks.length > 0
+      ? checks
+      : ['links', 'forms', 'loader', 'params', 'interactive', 'a11y']
   );
 
-  if (enabledChecks.has("links")) {
+  if (enabledChecks.has('links')) {
     issues.push(...checkLinks(components, routes));
   }
 
-  if (enabledChecks.has("forms")) {
+  if (enabledChecks.has('forms')) {
     issues.push(...checkForms(components, routes, root));
   }
 
-  if (enabledChecks.has("loader")) {
+  if (enabledChecks.has('loader')) {
     issues.push(...checkLoaders(components));
   }
 
-  if (enabledChecks.has("params")) {
+  if (enabledChecks.has('params')) {
     issues.push(...checkParams(components, routes, root));
   }
 
-  if (enabledChecks.has("interactive")) {
+  if (enabledChecks.has('interactive')) {
     issues.push(...checkInteractive(components));
   }
 
-  if (enabledChecks.has("a11y")) {
+  if (enabledChecks.has('a11y')) {
     issues.push(...checkA11y(components));
   }
 
@@ -116,14 +118,14 @@ function findComponentFiles(root: string, specificFiles: string[]): string[] {
   }
 
   // Find all TSX files in app/routes
-  const routesDir = path.join(root, "app", "routes");
+  const routesDir = path.join(root, 'app', 'routes');
   if (!fs.existsSync(routesDir)) {
     return [];
   }
 
   const files: string[] = [];
   walkDir(routesDir, (filePath) => {
-    if (filePath.endsWith(".tsx")) {
+    if (filePath.endsWith('.tsx')) {
       files.push(filePath);
     }
   });

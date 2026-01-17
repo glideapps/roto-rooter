@@ -1,7 +1,7 @@
 // Placeholder for accessibility checks
 // These require cross-element analysis
 
-import type { AnalyzerIssue, ComponentAnalysis } from "../types.js";
+import type { AnalyzerIssue, ComponentAnalysis } from '../types.js';
 
 /**
  * Check accessibility issues

@@ -1,11 +1,11 @@
-import * as path from "path";
+import * as path from 'path';
 import type {
   AnalyzerIssue,
   ComponentAnalysis,
   RouteDefinition,
-} from "../types.js";
-import { matchRoute } from "../parsers/route-parser.js";
-import { parseRouteExports } from "../parsers/action-parser.js";
+} from '../types.js';
+import { matchRoute } from '../parsers/route-parser.js';
+import { parseRouteExports } from '../parsers/action-parser.js';
 
 /**
  * Check form-action wiring
@@ -31,7 +31,7 @@ export function checkForms(
  * Validate a single form
  */
 function validateForm(
-  form: ComponentAnalysis["forms"][0],
+  form: ComponentAnalysis['forms'][0],
   component: ComponentAnalysis,
   routes: RouteDefinition[],
   rootDir: string
@@ -44,21 +44,21 @@ function validateForm(
 
     if (!targetRoute) {
       issues.push({
-        category: "forms",
-        severity: "error",
+        category: 'forms',
+        severity: 'error',
         message: `Form action targets non-existent route: ${form.action}`,
         location: form.location,
         code: `<Form action="${form.action}">`,
       });
     } else {
       // Check if the target route file has an action export
-      const routeFilePath = path.join(rootDir, "app", targetRoute.file);
+      const routeFilePath = path.join(rootDir, 'app', targetRoute.file);
       try {
         const exports = parseRouteExports(routeFilePath);
         if (!exports.hasAction) {
           issues.push({
-            category: "forms",
-            severity: "error",
+            category: 'forms',
+            severity: 'error',
             message: `Form action targets route without action export`,
             location: form.location,
             code: `<Form action="${form.action}">`,
@@ -73,12 +73,12 @@ function validateForm(
     // Form submits to current route - check if current file has action
     if (!component.hasAction) {
       issues.push({
-        category: "forms",
-        severity: "error",
-        message: "Form in route with no action export",
+        category: 'forms',
+        severity: 'error',
+        message: 'Form in route with no action export',
         location: form.location,
-        code: "<Form>",
-        suggestion: "Add an action export to handle form submission",
+        code: '<Form>',
+        suggestion: 'Add an action export to handle form submission',
       });
     }
   }

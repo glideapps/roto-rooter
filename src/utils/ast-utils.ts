@@ -1,4 +1,4 @@
-import ts from "typescript";
+import ts from 'typescript';
 
 /**
  * Parse a TypeScript/TSX file and return its source file AST
@@ -9,7 +9,7 @@ export function parseFile(filePath: string, content: string): ts.SourceFile {
     content,
     ts.ScriptTarget.Latest,
     true,
-    filePath.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+    filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
   );
 }
 
@@ -20,7 +20,8 @@ export function getLineAndColumn(
   sourceFile: ts.SourceFile,
   position: number
 ): { line: number; column: number } {
-  const { line, character } = sourceFile.getLineAndCharacterOfPosition(position);
+  const { line, character } =
+    sourceFile.getLineAndCharacterOfPosition(position);
   return { line: line + 1, column: character + 1 };
 }
 
@@ -54,7 +55,11 @@ export function getJsxAttribute(
     : element.attributes;
 
   for (const attr of attributes.properties) {
-    if (ts.isJsxAttribute(attr) && ts.isIdentifier(attr.name) && attr.name.text === attributeName) {
+    if (
+      ts.isJsxAttribute(attr) &&
+      ts.isIdentifier(attr.name) &&
+      attr.name.text === attributeName
+    ) {
       return attr;
     }
   }
@@ -105,14 +110,15 @@ export function getJsxAttributeStringValue(
  * Extract a pattern from a template literal expression
  * e.g., `/employees/${id}` -> { value: "/employees/${id}", isDynamic: true }
  */
-function extractTemplatePattern(
-  template: ts.TemplateExpression
-): { value: string; isDynamic: boolean } {
+function extractTemplatePattern(template: ts.TemplateExpression): {
+  value: string;
+  isDynamic: boolean;
+} {
   let pattern = template.head.text;
 
   for (const span of template.templateSpans) {
     // Replace interpolations with :param placeholder
-    pattern += ":param" + span.literal.text;
+    pattern += ':param' + span.literal.text;
   }
 
   return { value: pattern, isDynamic: true };
@@ -121,7 +127,10 @@ function extractTemplatePattern(
 /**
  * Check if a node is a call expression to a specific function
  */
-export function isCallTo(node: ts.Node, functionName: string): node is ts.CallExpression {
+export function isCallTo(
+  node: ts.Node,
+  functionName: string
+): node is ts.CallExpression {
   if (!ts.isCallExpression(node)) {
     return false;
   }
@@ -140,8 +149,12 @@ export function isCallTo(node: ts.Node, functionName: string): node is ts.CallEx
  * Check if a function/variable is exported
  */
 export function isExported(node: ts.Node): boolean {
-  const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
-  return modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
+  const modifiers = ts.canHaveModifiers(node)
+    ? ts.getModifiers(node)
+    : undefined;
+  return (
+    modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false
+  );
 }
 
 /**
