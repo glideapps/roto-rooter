@@ -27,14 +27,16 @@ Invalid checks: examine single files in isolation; check generic React/TypeScrip
 
 ### 3. Build Verification
 
-Run the full build and test suite:
+Run the full build, typecheck, lint, and test suite:
 
 ```bash
+npm run typecheck
+npm run lint
 npm run build
-npm run test:run
+npm test
 ```
 
-Both commands must complete with zero errors and zero warnings.
+All commands must complete with zero errors and zero warnings.
 
 ### 4. PR Title and Description
 
@@ -63,6 +65,8 @@ Provide a summary with status for each section:
 [ ] Invalid checks: <list with explanation>
 
 ### Build Status
+[x] Typecheck passes
+[x] Lint passes
 [x] Build passes with no errors/warnings
 [x] All tests pass
 
