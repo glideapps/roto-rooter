@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { analyze } from './analyzer.js';
 import type { CliOptions } from './types.js';
 import { formatIssues } from './utils/format-issue.js';
+import { formatResultJson } from './utils/format-json.js';
 
 function getVersion(): string {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -31,7 +32,8 @@ function main(): void {
   const result = analyze(options);
 
   if (options.format === 'json') {
-    console.log(JSON.stringify(result, null, 2));
+    const jsonOutput = formatResultJson(result);
+    console.log(JSON.stringify(jsonOutput, null, 2));
   } else {
     console.log(formatIssues(result.issues));
   }

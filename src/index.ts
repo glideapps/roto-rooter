@@ -13,6 +13,10 @@ export { checkForms } from './checks/form-check.js';
 export { checkLoaders } from './checks/loader-check.js';
 export { checkParams } from './checks/params-check.js';
 
+// Output formatting utilities
+export { formatIssue, formatIssues } from './utils/format-issue.js';
+export { formatIssueJson, formatResultJson } from './utils/format-json.js';
+
 export type {
   RouteDefinition,
   LinkReference,
@@ -24,3 +28,5 @@ export type {
   AnalyzerResult,
   CliOptions,
 } from './types.js';
+
+export type { JsonIssue, JsonOutput } from './utils/format-json.js';
