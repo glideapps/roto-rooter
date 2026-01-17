@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import type { SourceSpan } from '../types.js';
 
 /**
  * Parse a TypeScript/TSX file and return its source file AST
@@ -107,6 +108,51 @@ export function getJsxAttributeStringValue(
 }
 
 /**
+ * Extract string value and span from a JSX attribute for auto-fix support
+ * Returns the span of the value node (string literal or template)
+ */
+export function getJsxAttributeStringValueWithSpan(
+  attr: ts.JsxAttribute
+): { value: string; isDynamic: boolean; valueNode: ts.Node } | undefined {
+  const initializer = attr.initializer;
+  if (!initializer) {
+    return undefined;
+  }
+
+  // String literal: href="/path"
+  if (ts.isStringLiteral(initializer)) {
+    return {
+      value: initializer.text,
+      isDynamic: false,
+      valueNode: initializer,
+    };
+  }
+
+  // JSX expression: href={...}
+  if (ts.isJsxExpression(initializer) && initializer.expression) {
+    const expr = initializer.expression;
+
+    // String literal inside expression: href={"/path"}
+    if (ts.isStringLiteral(expr)) {
+      return { value: expr.text, isDynamic: false, valueNode: expr };
+    }
+
+    // Template literal: href={`/employees/${id}`}
+    if (ts.isTemplateExpression(expr)) {
+      const pattern = extractTemplatePattern(expr);
+      return { ...pattern, valueNode: expr };
+    }
+
+    // No-substitution template: href={`/employees`}
+    if (ts.isNoSubstitutionTemplateLiteral(expr)) {
+      return { value: expr.text, isDynamic: false, valueNode: expr };
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Extract a pattern from a template literal expression
  * e.g., `/employees/${id}` -> { value: "/employees/${id}", isDynamic: true }
  */
@@ -163,4 +209,24 @@ export function isExported(node: ts.Node): boolean {
 export function walkAst(node: ts.Node, visitor: (node: ts.Node) => void): void {
   visitor(node);
   ts.forEachChild(node, (child) => walkAst(child, visitor));
+}
+
+/**
+ * Get source span for a node, including start/end positions for text replacement
+ */
+export function getNodeSpan(
+  sourceFile: ts.SourceFile,
+  node: ts.Node,
+  filePath: string
+): SourceSpan {
+  const start = node.getStart(sourceFile);
+  const end = node.getEnd();
+  const { line, character } = sourceFile.getLineAndCharacterOfPosition(start);
+  return {
+    file: filePath,
+    start,
+    end,
+    line: line + 1,
+    column: character + 1,
+  };
 }
