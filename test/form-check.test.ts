@@ -30,4 +30,49 @@ describe('form-check', () => {
 
     expect(issues).toHaveLength(0);
   });
+
+  describe('form field validation', () => {
+    it('should detect when action reads a field not provided by the form', () => {
+      const routes = parseRoutes(fixturesDir);
+      const contactPath = path.join(fixturesDir, 'app/routes/contact.tsx');
+      const component = parseComponent(contactPath);
+
+      const issues = checkForms([component], routes, fixturesDir);
+
+      const missingFieldError = issues.find(
+        (i) =>
+          i.severity === 'error' &&
+          i.message.includes("'subject'") &&
+          i.message.includes('no input')
+      );
+      expect(missingFieldError).toBeDefined();
+      expect(missingFieldError?.suggestion).toContain('subject');
+    });
+
+    it('should warn when form provides a field the action never reads', () => {
+      const routes = parseRoutes(fixturesDir);
+      const contactPath = path.join(fixturesDir, 'app/routes/contact.tsx');
+      const component = parseComponent(contactPath);
+
+      const issues = checkForms([component], routes, fixturesDir);
+
+      const unusedFieldWarning = issues.find(
+        (i) =>
+          i.severity === 'warning' &&
+          i.message.includes("'name'") &&
+          i.message.includes('never read')
+      );
+      expect(unusedFieldWarning).toBeDefined();
+    });
+
+    it('should not flag forms where all fields match', () => {
+      const routes = parseRoutes(fixturesDir);
+      const feedbackPath = path.join(fixturesDir, 'app/routes/feedback.tsx');
+      const component = parseComponent(feedbackPath);
+
+      const issues = checkForms([component], routes, fixturesDir);
+
+      expect(issues).toHaveLength(0);
+    });
+  });
 });
