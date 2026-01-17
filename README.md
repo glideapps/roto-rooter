@@ -37,13 +37,13 @@ rr --app ./my-app
 ## Programmatic API
 
 ```typescript
-import { analyze } from "roto-rooter";
+import { analyze } from 'roto-rooter';
 
 const result = analyze({
-  root: "./my-app",
-  files: [],       // empty = all files
-  checks: [],      // empty = all checks
-  format: "text",
+  root: './my-app',
+  files: [], // empty = all files
+  checks: [], // empty = all checks
+  format: 'text',
 });
 
 console.log(result.issues);

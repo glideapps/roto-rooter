@@ -34,11 +34,11 @@ Add a new check to roto-rooter: `/add-check <check-name>`
 
 ## Existing Checks
 
-| Category | File | Validates |
-|----------|------|-----------|
-| links | `link-check.ts` | `<Link>`, `<a>`, `redirect()`, `navigate()` targets |
-| forms | `form-check.ts` | `<Form>` actions have corresponding exports |
-| loader | `loader-check.ts` | `useLoaderData()`/`useActionData()` usage |
-| params | `params-check.ts` | `useParams()` accesses defined route params |
-| interactive | `interactive-check.ts` | (TODO) Button handlers |
-| a11y | `a11y-check.ts` | (TODO) Accessibility |
+| Category    | File                   | Validates                                           |
+| ----------- | ---------------------- | --------------------------------------------------- |
+| links       | `link-check.ts`        | `<Link>`, `<a>`, `redirect()`, `navigate()` targets |
+| forms       | `form-check.ts`        | `<Form>` actions have corresponding exports         |
+| loader      | `loader-check.ts`      | `useLoaderData()`/`useActionData()` usage           |
+| params      | `params-check.ts`      | `useParams()` accesses defined route params         |
+| interactive | `interactive-check.ts` | (TODO) Button handlers                              |
+| a11y        | `a11y-check.ts`        | (TODO) Accessibility                                |
