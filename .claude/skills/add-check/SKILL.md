@@ -88,7 +88,7 @@ When in doubt, prefer `error`. Users can configure checks to ignore specific iss
 | Category  | File                 | Validates                                                  |
 | --------- | -------------------- | ---------------------------------------------------------- |
 | links     | `link-check.ts`      | `<Link>`, `<a>`, `redirect()`, `navigate()` targets        |
-| forms     | `form-check.ts`      | `<Form>` actions have corresponding exports                |
+| forms     | `form-check.ts`      | `<Form>` actions + field/formData.get() alignment          |
 | loader    | `loader-check.ts`    | `useLoaderData()`/`useActionData()` usage                  |
 | params    | `params-check.ts`    | `useParams()` accesses defined route params                |
 | hydration | `hydration-check.ts` | SSR hydration mismatch risks (dates, locale, browser APIs) |

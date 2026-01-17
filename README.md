@@ -30,7 +30,7 @@ rr --app ./my-app
 ## Checks
 
 - **links**: Validates Link, redirect(), and navigate() targets exist as defined routes
-- **forms**: Validates forms submit to routes with action exports
+- **forms**: Validates forms submit to routes with action exports, and that form fields match what the action reads via formData.get()
 - **loader**: Validates useLoaderData() is only used in routes with loaders
 - **params**: Validates useParams() accesses only params defined in the route
 - **hydration**: Detects SSR hydration mismatch risks (dates, locale formatting, random values, browser APIs)
