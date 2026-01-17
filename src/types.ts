@@ -30,6 +30,8 @@ export interface LinkReference {
   location: SourceLocation;
   /** The type of link */
   type: 'link' | 'redirect' | 'navigate';
+  /** Span of the attribute value for auto-fix */
+  attributeSpan?: SourceSpan;
 }
 
 /**
@@ -44,6 +46,8 @@ export interface FormReference {
   inputNames: string[];
   /** Source location */
   location: SourceLocation;
+  /** Span of the action attribute value for auto-fix */
+  actionSpan?: SourceSpan;
 }
 
 /**
@@ -56,6 +60,8 @@ export interface DataHookReference {
   accessedParams?: string[];
   /** Source location */
   location: SourceLocation;
+  /** Spans of param identifiers for auto-fix (maps param name to its span) */
+  paramSpans?: Map<string, SourceSpan>;
 }
 
 /**
@@ -77,6 +83,10 @@ export interface HydrationRisk {
   inUseEffect: boolean;
   /** Whether suppressHydrationWarning is present on parent element */
   hasSuppressWarning: boolean;
+  /** Span of the call expression for auto-fix */
+  callSpan?: SourceSpan;
+  /** For locale-format: number of arguments in the call (for determining fix) */
+  argCount?: number;
 }
 
 /**
@@ -109,6 +119,45 @@ export interface SourceLocation {
 }
 
 /**
+ * Source span with start and end positions for precise text replacement
+ */
+export interface SourceSpan {
+  file: string;
+  /** Start position (0-based byte offset in file) */
+  start: number;
+  /** End position (0-based byte offset in file) */
+  end: number;
+  /** Line number for display (1-based) */
+  line: number;
+  /** Column number for display (1-based) */
+  column: number;
+}
+
+/**
+ * A single text edit operation
+ */
+export interface TextEdit {
+  /** File to modify */
+  file: string;
+  /** Start position (0-based byte offset) */
+  start: number;
+  /** End position (0-based byte offset) */
+  end: number;
+  /** Replacement text (empty string = deletion) */
+  newText: string;
+}
+
+/**
+ * A fix that can be applied to source code
+ */
+export interface IssueFix {
+  /** Human-readable description of what the fix does */
+  description: string;
+  /** The text replacements to apply */
+  edits: TextEdit[];
+}
+
+/**
  * An issue found by the analyzer
  */
 export interface AnalyzerIssue {
@@ -124,6 +173,24 @@ export interface AnalyzerIssue {
   code?: string;
   /** Suggestion for fix (e.g., "Did you mean: /employees/:id?") */
   suggestion?: string;
+  /** Auto-fix for this issue, if available */
+  fix?: IssueFix;
+}
+
+/**
+ * Result of applying fixes
+ */
+export interface FixResult {
+  /** Files that were modified */
+  filesModified: string[];
+  /** Number of fixes applied */
+  fixesApplied: number;
+  /** Issues that were fixed */
+  fixedIssues: AnalyzerIssue[];
+  /** Issues that could not be fixed */
+  unfixableIssues: AnalyzerIssue[];
+  /** Errors encountered while applying fixes */
+  errors: Array<{ file: string; error: string }>;
 }
 
 /**
@@ -150,4 +217,8 @@ export interface CliOptions {
   format: 'text' | 'json';
   /** Root directory of the project */
   root: string;
+  /** Apply fixes automatically */
+  fix?: boolean;
+  /** Show what would be fixed without modifying files */
+  dryRun?: boolean;
 }

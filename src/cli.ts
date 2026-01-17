@@ -4,7 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { analyze } from './analyzer.js';
-import type { AnalyzerIssue, CliOptions } from './types.js';
+import { applyFixes } from './fixer.js';
+import type { AnalyzerIssue, CliOptions, FixResult } from './types.js';
 
 function getVersion(): string {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -29,6 +30,27 @@ function main(): void {
 
   const result = analyze(options);
 
+  // Handle --fix or --dry-run mode
+  if (options.fix || options.dryRun) {
+    const fixResult = applyFixes(result.issues, options.dryRun ?? false);
+
+    if (options.format === 'json') {
+      console.log(JSON.stringify({ ...result, fixResult }, null, 2));
+    } else {
+      printFixOutput(fixResult, options.dryRun ?? false);
+    }
+
+    // Exit with error code if there are still unfixable errors
+    const remainingErrors = fixResult.unfixableIssues.filter(
+      (i) => i.severity === 'error'
+    ).length;
+    if (remainingErrors > 0) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  // Normal mode - just report issues
   if (options.format === 'json') {
     console.log(JSON.stringify(result, null, 2));
   } else {
@@ -55,6 +77,8 @@ function parseArgs(args: string[]): ParsedArgs {
     root: process.cwd(),
     help: false,
     version: false,
+    fix: false,
+    dryRun: false,
   };
 
   let i = 0;
@@ -69,6 +93,18 @@ function parseArgs(args: string[]): ParsedArgs {
 
     if (arg === '--version' || arg === '-v') {
       options.version = true;
+      i++;
+      continue;
+    }
+
+    if (arg === '--fix') {
+      options.fix = true;
+      i++;
+      continue;
+    }
+
+    if (arg === '--dry-run') {
+      options.dryRun = true;
       i++;
       continue;
     }
@@ -123,8 +159,10 @@ OPTIONS:
   -v, --version           Show version number
   -f, --format <format>   Output format: text (default) or json
   -c, --check <checks>    Comma-separated list of checks to run (default is all checks)
-                          Available: links, forms, loader, params, interactive, a11y
-  -a, --app <path>       Root directory of the app to roto-root (default: current directory)
+                          Available: links, forms, loader, params, hydration
+  -a, --app <path>        Root directory of the app to roto-root (default: current directory)
+  --fix                   Automatically fix issues where possible
+  --dry-run               Show what would be fixed without modifying files
 
 EXAMPLES:
   # Check all files in current directory
@@ -139,11 +177,17 @@ EXAMPLES:
   # Output as JSON
   rr --format json
 
+  # Automatically fix all fixable issues
+  rr --fix
+
+  # Preview fixes without applying
+  rr --dry-run
+
+  # Fix specific file(s)
+  rr --fix app/routes/dashboard.tsx
+
   # Analyze files in the context of a different app
   rr --app ./my-app ./my-app/app/routes/dashboard.tsx
-
-  # Analyze a file against an app in a different location
-  rr --app /path/to/app /some/other/path/component.tsx
 `);
 }
 
@@ -182,6 +226,92 @@ function printTextOutput(issues: AnalyzerIssue[]): void {
     `Summary: ${errorCount} error${errorCount === 1 ? '' : 's'}, ${warningCount} warning${warningCount === 1 ? '' : 's'}`
   );
   console.log('Run with --help for options.');
+}
+
+function printFixOutput(fixResult: FixResult, dryRun: boolean): void {
+  const { fixedIssues, unfixableIssues, filesModified, errors } = fixResult;
+
+  if (fixedIssues.length === 0 && unfixableIssues.length === 0) {
+    console.log('No issues found.');
+    return;
+  }
+
+  // Print fixed/would-fix issues
+  if (fixedIssues.length > 0) {
+    const action = dryRun ? 'Would fix' : 'Fixed';
+    console.log(
+      `\n${action} ${fixedIssues.length} issue${fixedIssues.length === 1 ? '' : 's'} in ${filesModified.length} file${filesModified.length === 1 ? '' : 's'}:`
+    );
+    console.log();
+
+    for (const issue of fixedIssues) {
+      const icon = issue.severity === 'error' ? '[error]' : '[warning]';
+      const relativePath = path.relative(process.cwd(), issue.location.file);
+      const fixLabel = dryRun ? '[would fix]' : '[fixed]';
+
+      console.log(
+        `[${issue.category}] ${relativePath}:${issue.location.line}:${issue.location.column}`
+      );
+      if (issue.code) {
+        console.log(`  ${issue.code}`);
+      }
+      console.log(`  ${icon} ${issue.message}`);
+      if (issue.fix) {
+        console.log(`  ${fixLabel} ${issue.fix.description}`);
+      }
+      console.log();
+    }
+  }
+
+  // Print errors that occurred while fixing
+  if (errors.length > 0) {
+    console.log('Errors while applying fixes:');
+    for (const { file, error } of errors) {
+      const relativePath = path.relative(process.cwd(), file);
+      console.log(`  [!] ${relativePath}: ${error}`);
+    }
+    console.log();
+  }
+
+  // Print unfixable issues
+  if (unfixableIssues.length > 0) {
+    const errorCount = unfixableIssues.filter(
+      (i) => i.severity === 'error'
+    ).length;
+    const warningCount = unfixableIssues.filter(
+      (i) => i.severity === 'warning'
+    ).length;
+
+    console.log(
+      `${unfixableIssues.length} issue${unfixableIssues.length === 1 ? '' : 's'} could not be auto-fixed:`
+    );
+    console.log();
+
+    for (const issue of unfixableIssues) {
+      const icon = issue.severity === 'error' ? '[error]' : '[warning]';
+      const relativePath = path.relative(process.cwd(), issue.location.file);
+
+      console.log(
+        `[${issue.category}] ${relativePath}:${issue.location.line}:${issue.location.column}`
+      );
+      if (issue.code) {
+        console.log(`  ${issue.code}`);
+      }
+      console.log(`  ${icon} ${issue.message}`);
+      if (issue.suggestion) {
+        console.log(`  -> ${issue.suggestion}`);
+      }
+      console.log();
+    }
+
+    console.log(
+      `Unfixable: ${errorCount} error${errorCount === 1 ? '' : 's'}, ${warningCount} warning${warningCount === 1 ? '' : 's'}`
+    );
+  }
+
+  if (dryRun && fixedIssues.length > 0) {
+    console.log('Run with --fix to apply changes.');
+  }
 }
 
 main();
