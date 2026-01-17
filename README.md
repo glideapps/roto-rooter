@@ -48,3 +48,11 @@ const result = analyze({
 
 console.log(result.issues);
 ```
+
+## Development
+
+```bash
+npm install      # Install dependencies
+npm test         # Run tests
+npm run build    # Build for distribution
+```
