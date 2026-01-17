@@ -13,8 +13,7 @@ import { checkLinks } from './checks/link-check.js';
 import { checkForms } from './checks/form-check.js';
 import { checkLoaders } from './checks/loader-check.js';
 import { checkParams } from './checks/params-check.js';
-import { checkInteractive } from './checks/interactive-check.js';
-import { checkA11y } from './checks/a11y-check.js';
+import { checkHydration } from './checks/hydration-check.js';
 
 /**
  * Main analyzer - orchestrates parsing and checking
@@ -69,7 +68,7 @@ export function analyze(options: CliOptions): AnalyzerResult {
   const enabledChecks = new Set(
     checks.length > 0
       ? checks
-      : ['links', 'forms', 'loader', 'params', 'interactive', 'a11y']
+      : ['links', 'forms', 'loader', 'params', 'hydration']
   );
 
   if (enabledChecks.has('links')) {
@@ -88,12 +87,8 @@ export function analyze(options: CliOptions): AnalyzerResult {
     issues.push(...checkParams(components, routes, root));
   }
 
-  if (enabledChecks.has('interactive')) {
-    issues.push(...checkInteractive(components));
-  }
-
-  if (enabledChecks.has('a11y')) {
-    issues.push(...checkA11y(components));
+  if (enabledChecks.has('hydration')) {
+    issues.push(...checkHydration(components));
   }
 
   // If specific files were provided, filter issues to only those files

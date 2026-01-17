@@ -33,6 +33,7 @@ rr --app ./my-app
 - **forms**: Validates forms submit to routes with action exports
 - **loader**: Validates useLoaderData() is only used in routes with loaders
 - **params**: Validates useParams() accesses only params defined in the route
+- **hydration**: Detects SSR hydration mismatch risks (dates, locale formatting, random values, browser APIs)
 
 ## Programmatic API
 

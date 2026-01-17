@@ -11,6 +11,10 @@ Pre-merge review: `/final-review`
 
 ## Process
 
+### 0. Fetch Latest
+
+Run `git fetch origin main` to ensure comparisons use the latest main branch.
+
 ### 1. Test Coverage
 
 - Run `git diff main --name-only` to identify changed files
@@ -36,14 +40,33 @@ npm run typecheck && npm run lint && npm run build && npm test
 
 **Fix:** Resolve type errors, lint errors, build errors. Re-run until zero errors/warnings.
 
-### 4. Documentation
+### 4. Documentation Consistency
 
-- Verify README.md reflects current project state
-- Ensure new features are documented
+Verify all documentation sources are consistent:
 
-**Fix:** Update stale or missing documentation.
+- `README.md` - User-facing documentation
+- `CLAUDE.md` - Agent instructions
+- `.claude/skills/add-check/SKILL.md` - Existing checks table
 
-### 5. PR Metadata
+Check for:
+
+- All checks in `src/checks/` are listed in all docs
+- Placeholder vs implemented status is consistent across docs
+- Check descriptions match between files
+
+**Fix:** Update any inconsistent or stale documentation.
+
+### 5. Version Update
+
+Check `package.json` version against change scope:
+
+- **Major:** Breaking changes
+- **Minor:** New checks added
+- **Patch:** Any other change
+
+**Fix:** Update version in `package.json` if needed.
+
+### 6. PR Metadata (if PR exists)
 
 - `gh pr view` - check current title/description
 - `git log main..HEAD --oneline` - see commits
@@ -51,7 +74,7 @@ npm run typecheck && npm run lint && npm run build && npm test
 
 **Fix:** Use `gh pr edit --title` and `gh pr edit --body` to update.
 
-### 6. Commit and Push
+### 7. Commit and Push
 
 Stage, commit, and push all fixes made during review.
 
@@ -72,9 +95,13 @@ Flagged: <any invalid checks>
 [x] typecheck/lint/build/test all pass
 Changes: <code fixes>
 
-### Documentation
-[x] Up to date
+### Documentation Consistency
+[x] All docs consistent
 Changes: <doc updates>
+
+### Version Update
+[x] Version updated appropriately
+Changes: <version bump type or "no change needed">
 
 ### PR Metadata
 [x] Title and description accurate
