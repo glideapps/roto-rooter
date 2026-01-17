@@ -5,80 +5,83 @@ description: Performs a comprehensive pre-merge review of changes on the current
 
 # Final Review Skill
 
-Perform a final review before merging: `/final-review`
+Pre-merge review: `/final-review`
 
-## Review Checklist
+**Fix issues immediately without asking permission.** Report what was done.
+
+## Process
 
 ### 1. Test Coverage
 
-Verify all changes in the local branch have proper test coverage:
-
 - Run `git diff main --name-only` to identify changed files
-- For each changed file in `src/checks/`, confirm a corresponding test file exists in `test/`
-- For new functionality, confirm test cases cover the happy path and edge cases
-- Run `npm run test:run` to ensure all tests pass
+- Confirm each `src/checks/*.ts` has a corresponding `test/*.test.ts`
+- Run `npm run test:run`
+
+**Fix:** Write missing tests, fix failing tests, re-run until green.
 
 ### 2. Check Validity
 
-For any new checks added in `src/checks/`:
+For new checks in `src/checks/`:
 
-- Confirm the check requires cross-file application context (route/component relationships)
-- Confirm the check cannot be implemented as an ESLint rule or other static analysis
-- If a check could be an ESLint rule, flag it as invalid and explain why
+- **Valid:** Requires cross-file context (route/component relationships, multi-file AST)
+- **Invalid:** Could be an ESLint rule, examines single files, generic patterns
 
-Valid checks: cross-reference routes, components, and exports; validate references match actual application structure; require multi-file AST analysis.
-
-Invalid checks: examine single files in isolation; check generic React/TypeScript patterns; could be a standard linter rule.
+**Fix:** Flag invalid checks in report (requires user decision).
 
 ### 3. Build Verification
 
-Run the full build, typecheck, lint, and test suite:
-
 ```bash
-npm run typecheck
-npm run lint
-npm run build
-npm test
+npm run typecheck && npm run lint && npm run build && npm test
 ```
 
-All commands must complete with zero errors and zero warnings.
+**Fix:** Resolve type errors, lint errors, build errors. Re-run until zero errors/warnings.
 
-### 4. PR Title and Description
+### 4. Documentation
 
-Verify the pull request metadata matches the branch changes:
+- Verify README.md reflects current project state
+- Ensure new features are documented
 
-- Use `gh pr view` to check current PR title and description
-- Use `git log main..HEAD --oneline` to see all commits in the branch
-- Use `git diff main --stat` to see the full scope of changes
-- Confirm PR title accurately summarizes the changes
-- Confirm PR description covers all significant changes
-- If updates are needed, use `gh pr edit` to fix the title/description
+**Fix:** Update stale or missing documentation.
 
-## Output Format
+### 5. PR Metadata
 
-Provide a summary with status for each section:
+- `gh pr view` - check current title/description
+- `git log main..HEAD --oneline` - see commits
+- `git diff main --stat` - see change scope
+
+**Fix:** Use `gh pr edit --title` and `gh pr edit --body` to update.
+
+### 6. Commit and Push
+
+Stage, commit, and push all fixes made during review.
+
+## Output
 
 ```
 ## Final Review Results
 
 ### Test Coverage
-[x] All changed files have corresponding tests
-[ ] Missing tests: <list files>
+[x] Tests exist and pass
+Changes: <tests added/fixed>
 
 ### Check Validity
-[x] All new checks require cross-file context
-[ ] Invalid checks: <list with explanation>
+[x] All checks require cross-file context
+Flagged: <any invalid checks>
 
 ### Build Status
-[x] Typecheck passes
-[x] Lint passes
-[x] Build passes with no errors/warnings
-[x] All tests pass
+[x] typecheck/lint/build/test all pass
+Changes: <code fixes>
+
+### Documentation
+[x] Up to date
+Changes: <doc updates>
 
 ### PR Metadata
-[x] Title accurately reflects changes
-[x] Description covers full scope
-[ ] Needs update: <suggestions>
+[x] Title and description accurate
+Changes: <PR updates>
 
-## Verdict: READY / NEEDS WORK
+### Commits
+<commits created>
+
+## Verdict: READY TO MERGE | NEEDS MANUAL ATTENTION
 ```
