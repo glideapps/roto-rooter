@@ -4,8 +4,9 @@ import type {
   ComponentAnalysis,
   RouteDefinition,
 } from '../types.js';
-import { matchRoute } from '../parsers/route-parser.js';
+import { matchRoute, getAllRoutePaths } from '../parsers/route-parser.js';
 import { parseRouteExports } from '../parsers/action-parser.js';
+import { findBestMatch, formatSuggestion } from '../utils/suggestion.js';
 
 /**
  * Check form-action wiring
@@ -43,12 +44,15 @@ function validateForm(
     const targetRoute = matchRoute(form.action, routes);
 
     if (!targetRoute) {
+      const allPaths = getAllRoutePaths(routes);
+      const suggestion = findBestMatch(form.action, allPaths);
       issues.push({
         category: 'forms',
         severity: 'error',
         message: `Form action targets non-existent route: ${form.action}`,
         location: form.location,
         code: `<Form action="${form.action}">`,
+        suggestion: formatSuggestion(suggestion),
       });
     } else {
       // Check if the target route file has an action export
