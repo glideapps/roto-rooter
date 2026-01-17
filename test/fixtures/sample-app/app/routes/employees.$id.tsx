@@ -1,7 +1,7 @@
-import { useLoaderData, useParams, Form } from "react-router";
+import { useLoaderData, useParams, Form } from 'react-router';
 
 export function loader({ params }: { params: { id: string } }) {
-  return { employee: { id: params.id, name: "John" } };
+  return { employee: { id: params.id, name: 'John' } };
 }
 
 export function action({ request }: { request: Request }) {

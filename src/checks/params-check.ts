@@ -1,9 +1,9 @@
-import * as path from "path";
+import * as path from 'path';
 import type {
   AnalyzerIssue,
   ComponentAnalysis,
   RouteDefinition,
-} from "../types.js";
+} from '../types.js';
 
 /**
  * Check route parameter consistency
@@ -19,7 +19,7 @@ export function checkParams(
   const fileToRoute = new Map<string, RouteDefinition>();
   function mapRoutes(routeList: RouteDefinition[]) {
     for (const route of routeList) {
-      const fullPath = path.join(rootDir, "app", route.file);
+      const fullPath = path.join(rootDir, 'app', route.file);
       fileToRoute.set(fullPath, route);
       if (route.children) {
         mapRoutes(route.children);
@@ -53,18 +53,18 @@ function validateParamUsage(
   const routeParams = new Set(route.params);
 
   for (const hook of component.dataHooks) {
-    if (hook.hook === "useParams" && hook.accessedParams) {
+    if (hook.hook === 'useParams' && hook.accessedParams) {
       for (const param of hook.accessedParams) {
         if (!routeParams.has(param)) {
           issues.push({
-            category: "params",
-            severity: "error",
+            category: 'params',
+            severity: 'error',
             message: `useParams() accesses "${param}" but route has no :${param} parameter`,
             location: hook.location,
             code: `useParams().${param}`,
             suggestion:
               route.params.length > 0
-                ? `Available params: ${route.params.map((p) => ":" + p).join(", ")}`
+                ? `Available params: ${route.params.map((p) => ':' + p).join(', ')}`
                 : `Route ${route.path} has no parameters`,
           });
         }

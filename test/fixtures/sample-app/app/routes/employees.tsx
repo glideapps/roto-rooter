@@ -1,4 +1,4 @@
-import { Link, useLoaderData } from "react-router";
+import { Link, useLoaderData } from 'react-router';
 
 export function loader() {
   return { employees: [] };

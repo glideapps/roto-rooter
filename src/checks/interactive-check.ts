@@ -1,7 +1,7 @@
 // Placeholder for interactive element completeness checks
 // This would check for buttons without handlers, etc.
 
-import type { AnalyzerIssue, ComponentAnalysis } from "../types.js";
+import type { AnalyzerIssue, ComponentAnalysis } from '../types.js';
 
 /**
  * Check interactive element completeness

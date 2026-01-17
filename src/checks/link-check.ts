@@ -2,13 +2,13 @@ import type {
   AnalyzerIssue,
   ComponentAnalysis,
   RouteDefinition,
-} from "../types.js";
+} from '../types.js';
 import {
   matchRoute,
   matchDynamicPattern,
   getAllRoutePaths,
-} from "../parsers/route-parser.js";
-import { findBestMatch, formatSuggestion } from "../utils/suggestion.js";
+} from '../parsers/route-parser.js';
+import { findBestMatch, formatSuggestion } from '../utils/suggestion.js';
 
 /**
  * Check all links in components against defined routes
@@ -36,7 +36,7 @@ export function checkLinks(
  * Validate a single link
  */
 function validateLink(
-  link: ComponentAnalysis["links"][0],
+  link: ComponentAnalysis['links'][0],
   routes: RouteDefinition[],
   allPaths: string[]
 ): AnalyzerIssue | undefined {
@@ -48,11 +48,11 @@ function validateLink(
     if (!match) {
       const suggestion = findBestMatch(pattern, allPaths);
       return {
-        category: "links",
-        severity: "error",
-        message: "No matching route for dynamic link pattern",
+        category: 'links',
+        severity: 'error',
+        message: 'No matching route for dynamic link pattern',
         location: link.location,
-        code: `${link.type === "link" ? "href" : link.type}="${link.href}"`,
+        code: `${link.type === 'link' ? 'href' : link.type}="${link.href}"`,
         suggestion: formatSuggestion(suggestion),
       };
     }
@@ -63,11 +63,11 @@ function validateLink(
     if (!match) {
       const suggestion = findBestMatch(link.href, allPaths);
       return {
-        category: "links",
-        severity: "error",
-        message: "No matching route",
+        category: 'links',
+        severity: 'error',
+        message: 'No matching route',
         location: link.location,
-        code: `${link.type === "link" ? "href" : link.type}="${link.href}"`,
+        code: `${link.type === 'link' ? 'href' : link.type}="${link.href}"`,
         suggestion: formatSuggestion(suggestion),
       };
     }

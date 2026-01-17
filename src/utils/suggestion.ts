@@ -1,4 +1,4 @@
-import { distance } from "fastest-levenshtein";
+import { distance } from 'fastest-levenshtein';
 
 /**
  * Find the best matching suggestion from a list of candidates
@@ -30,7 +30,9 @@ export function findBestMatch(
 /**
  * Format a "Did you mean?" suggestion
  */
-export function formatSuggestion(match: string | undefined): string | undefined {
+export function formatSuggestion(
+  match: string | undefined
+): string | undefined {
   if (!match) {
     return undefined;
   }

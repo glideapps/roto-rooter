@@ -29,7 +29,7 @@ export interface LinkReference {
   /** Source location */
   location: SourceLocation;
   /** The type of link */
-  type: "link" | "redirect" | "navigate";
+  type: 'link' | 'redirect' | 'navigate';
 }
 
 /**
@@ -39,7 +39,7 @@ export interface FormReference {
   /** The action attribute value */
   action?: string;
   /** The HTTP method */
-  method: "get" | "post" | "put" | "patch" | "delete";
+  method: 'get' | 'post' | 'put' | 'patch' | 'delete';
   /** Input names within the form */
   inputNames: string[];
   /** Source location */
@@ -51,7 +51,7 @@ export interface FormReference {
  */
 export interface DataHookReference {
   /** The hook name */
-  hook: "useLoaderData" | "useActionData" | "useParams";
+  hook: 'useLoaderData' | 'useActionData' | 'useParams';
   /** Param names accessed (for useParams) */
   accessedParams?: string[];
   /** Source location */
@@ -90,9 +90,9 @@ export interface SourceLocation {
  */
 export interface AnalyzerIssue {
   /** The check category */
-  category: "links" | "forms" | "loader" | "params" | "interactive" | "a11y";
+  category: 'links' | 'forms' | 'loader' | 'params' | 'interactive' | 'a11y';
   /** Severity level */
-  severity: "error" | "warning";
+  severity: 'error' | 'warning';
   /** Human-readable message */
   message: string;
   /** Source location */
@@ -124,7 +124,7 @@ export interface CliOptions {
   /** Checks to run (empty = all) */
   checks: string[];
   /** Output format */
-  format: "text" | "json";
+  format: 'text' | 'json';
   /** Root directory of the project */
   root: string;
 }
