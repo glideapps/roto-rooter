@@ -12,5 +12,6 @@ export default [
     route('/intent-dispatch', 'routes/intent-dispatch.tsx'),
     route('/query-links', 'routes/query-links.tsx'),
     route('/server-dates', 'routes/server-dates.tsx'),
+    route('/hydration-dedup', 'routes/hydration-dedup.tsx'),
   ]),
 ] satisfies RouteConfig;

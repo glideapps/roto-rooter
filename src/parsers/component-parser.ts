@@ -692,6 +692,7 @@ function detectHydrationRisk(
         code: node.getText(sourceFile),
         inUseEffect,
         hasSuppressWarning,
+        callSpan: getNodeSpan(sourceFile, node, filePath),
       };
     }
   }
@@ -713,6 +714,7 @@ function detectHydrationRisk(
           code: node.getText(sourceFile),
           inUseEffect,
           hasSuppressWarning,
+          callSpan: getNodeSpan(sourceFile, node, filePath),
         };
       }
 
