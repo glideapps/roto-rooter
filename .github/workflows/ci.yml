@@ -44,9 +44,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -56,36 +53,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Check if version was bumped
-        id: version-check
-        run: |
-          # Get the version from the current commit
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-
-          # Get the version from the previous commit
-          git checkout HEAD~1 -- package.json 2>/dev/null || echo "First commit"
-          PREVIOUS_VERSION=$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.0")
-
-          # Restore current package.json
-          git checkout HEAD -- package.json
-
-          echo "Current version: $CURRENT_VERSION"
-          echo "Previous version: $PREVIOUS_VERSION"
-
-          if [ "$CURRENT_VERSION" = "$PREVIOUS_VERSION" ]; then
-            echo "version_bumped=false" >> $GITHUB_OUTPUT
-          else
-            echo "version_bumped=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Auto-increment version
-        if: steps.version-check.outputs.version_bumped == 'false'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          npm version patch -m "chore: bump version to %s [skip ci]"
-          git push origin main --follow-tags
 
       - name: Build
         run: npm run build
