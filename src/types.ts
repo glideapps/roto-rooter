@@ -67,6 +67,33 @@ export interface DataHookReference {
 }
 
 /**
+ * Priority for hydration risk deduplication.
+ * Higher priority errors suppress overlapping lower priority errors.
+ * More specific/actionable errors have higher priority.
+ */
+export type HydrationRiskPriority = 0 | 1 | 2 | 3;
+
+/**
+ * Get priority for a hydration risk type.
+ * Higher priority = more specific/actionable error.
+ */
+export function getHydrationRiskPriority(
+  type: HydrationRisk['type']
+): HydrationRiskPriority {
+  switch (type) {
+    case 'locale-format':
+      return 3; // Most specific, has auto-fix
+    case 'random-value':
+      return 2; // Specific, often has auto-fix
+    case 'browser-api':
+      return 1; // Specific to browser APIs
+    case 'date-render':
+    case 'loader-date':
+      return 0; // Generic, no auto-fix
+  }
+}
+
+/**
  * Represents a potential SSR hydration mismatch pattern
  */
 export interface HydrationRisk {

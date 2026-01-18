@@ -3,6 +3,7 @@ import type {
   ComponentAnalysis,
   HydrationRisk,
 } from '../types.js';
+import { getHydrationRiskPriority } from '../types.js';
 
 /**
  * Check for SSR hydration mismatch risks
@@ -19,7 +20,12 @@ export function checkHydration(
   const issues: AnalyzerIssue[] = [];
 
   for (const component of components) {
-    for (const risk of component.hydrationRisks) {
+    // Deduplicate overlapping risks within each component
+    const deduplicatedRisks = deduplicateOverlappingRisks(
+      component.hydrationRisks
+    );
+
+    for (const risk of deduplicatedRisks) {
       // Skip risks that are already mitigated
       if (risk.inUseEffect || risk.hasSuppressWarning) {
         continue;
@@ -33,6 +39,119 @@ export function checkHydration(
   }
 
   return issues;
+}
+
+/**
+ * Deduplicate overlapping hydration risks.
+ *
+ * Rules:
+ * 1. Higher-priority errors suppress contained lower-priority errors.
+ *    Example: `new Date(date).toLocaleDateString()` - the `locale-format` error
+ *    (priority 3) suppresses the contained `date-render` error (priority 0).
+ *
+ * 2. For same-priority errors, the outermost (containing) error wins.
+ *    Example: `new Date(new Date().setHours(0,0,0,0))` - only the outer
+ *    `date-render` error is shown since fixing it fixes the nested one too.
+ */
+function deduplicateOverlappingRisks(risks: HydrationRisk[]): HydrationRisk[] {
+  if (risks.length <= 1) {
+    return risks;
+  }
+
+  // Group risks by file (should all be same file within a component, but be safe)
+  const risksByFile = new Map<string, HydrationRisk[]>();
+  for (const risk of risks) {
+    const file = risk.location.file;
+    if (!risksByFile.has(file)) {
+      risksByFile.set(file, []);
+    }
+    risksByFile.get(file)!.push(risk);
+  }
+
+  const result: HydrationRisk[] = [];
+
+  for (const fileRisks of risksByFile.values()) {
+    // Sort by priority (highest first), then by span size (largest/outermost first)
+    const sorted = [...fileRisks].sort((a, b) => {
+      const priorityDiff =
+        getHydrationRiskPriority(b.type) - getHydrationRiskPriority(a.type);
+      if (priorityDiff !== 0) return priorityDiff;
+      // For same priority, sort by span size (largest first = outermost)
+      const aSize = a.callSpan ? a.callSpan.end - a.callSpan.start : 0;
+      const bSize = b.callSpan ? b.callSpan.end - b.callSpan.start : 0;
+      return bSize - aSize;
+    });
+
+    // Track which risks are suppressed by higher/outer overlapping risks
+    const suppressed = new Set<HydrationRisk>();
+
+    for (let i = 0; i < sorted.length; i++) {
+      const outer = sorted[i];
+      if (suppressed.has(outer)) continue;
+
+      // Check if this risk suppresses any other risks
+      if (outer.callSpan) {
+        for (let j = i + 1; j < sorted.length; j++) {
+          const inner = sorted[j];
+          if (suppressed.has(inner)) continue;
+
+          // Check if outer's span contains inner
+          if (spanContainsLocation(outer, inner)) {
+            // Higher priority always suppresses lower priority
+            // Same priority: outer suppresses inner (same type nested errors)
+            const outerPriority = getHydrationRiskPriority(outer.type);
+            const innerPriority = getHydrationRiskPriority(inner.type);
+            if (outerPriority >= innerPriority) {
+              suppressed.add(inner);
+            }
+          }
+        }
+      }
+    }
+
+    // Keep only non-suppressed risks
+    for (const risk of fileRisks) {
+      if (!suppressed.has(risk)) {
+        result.push(risk);
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Check if a higher-priority risk's span contains a lower-priority risk's location.
+ * Uses byte offsets from callSpan for precise containment checking.
+ */
+function spanContainsLocation(
+  higher: HydrationRisk,
+  lower: HydrationRisk
+): boolean {
+  // Must have callSpan on the higher-priority risk
+  if (!higher.callSpan) return false;
+
+  // Use callSpan if available on lower, otherwise use location line/column
+  if (lower.callSpan) {
+    // Check if lower's span is entirely within higher's span
+    return (
+      lower.callSpan.start >= higher.callSpan.start &&
+      lower.callSpan.end <= higher.callSpan.end
+    );
+  }
+
+  // Fallback: check if same file and lower's line is within higher's code
+  // This is less precise but handles cases without callSpan
+  if (higher.location.file !== lower.location.file) return false;
+
+  // Count lines in the higher-priority code
+  const higherLines = higher.code.split('\n').length;
+  const higherEndLine = higher.location.line + higherLines - 1;
+
+  return (
+    lower.location.line >= higher.location.line &&
+    lower.location.line <= higherEndLine
+  );
 }
 
 /**

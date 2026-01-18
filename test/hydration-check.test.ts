@@ -182,6 +182,87 @@ describe('hydration-check', () => {
     });
   });
 
+  describe('error deduplication', () => {
+    it('should deduplicate locale-format containing date-render', () => {
+      const componentPath = path.join(
+        fixturesDir,
+        'app/routes/hydration-dedup.tsx'
+      );
+      const component = parseComponent(componentPath);
+      const issues = checkHydration([component]);
+
+      // Case 1: new Date(data.date).toLocaleDateString()
+      // Should only report locale-format, not date-render
+      const line16Issues = issues.filter((i) => i.location.line === 16);
+      expect(line16Issues).toHaveLength(1);
+      expect(line16Issues[0].message).toContain('Locale-dependent formatting');
+    });
+
+    it('should deduplicate nested date-render errors', () => {
+      const componentPath = path.join(
+        fixturesDir,
+        'app/routes/hydration-dedup.tsx'
+      );
+      const component = parseComponent(componentPath);
+      const issues = checkHydration([component]);
+
+      // Case 2: new Date(new Date().setHours(0, 0, 0, 0))
+      // The outer new Date(...) should suppress the inner new Date()
+      // Line 20: const isToday = new Date(data.date) >= new Date(new Date().setHours(...))
+      // We expect 3 errors for date-render on line 20:
+      // - new Date(data.date) at the start
+      // - new Date(new Date().setHours(0,0,0,0)) which contains and suppresses inner new Date()
+      const line20Issues = issues.filter((i) => i.location.line === 20);
+      // Should be 2 errors: one for new Date(data.date), one for outer new Date(...)
+      expect(line20Issues).toHaveLength(2);
+      expect(
+        line20Issues.every((i) =>
+          i.message.includes('Date created during render')
+        )
+      ).toBe(true);
+    });
+
+    it('should not deduplicate separate date-render errors', () => {
+      const componentPath = path.join(
+        fixturesDir,
+        'app/routes/hydration-dedup.tsx'
+      );
+      const component = parseComponent(componentPath);
+      const issues = checkHydration([component]);
+
+      // Case 3: Separate new Date() on lines 24 and 25
+      // Should report 2 separate errors
+      const line24Issues = issues.filter((i) => i.location.line === 24);
+      const line25Issues = issues.filter((i) => i.location.line === 25);
+      expect(line24Issues).toHaveLength(1);
+      expect(line25Issues).toHaveLength(1);
+    });
+
+    it('should not deduplicate separate locale-format errors', () => {
+      const componentPath = path.join(
+        fixturesDir,
+        'app/routes/hydration-dedup.tsx'
+      );
+      const component = parseComponent(componentPath);
+      const issues = checkHydration([component]);
+
+      // Case 4: Multiple locale calls on lines 30, 31, 32
+      // Plus the new Date() on line 29 (since it's not contained in locale calls)
+      const line29Issues = issues.filter((i) => i.location.line === 29);
+      const line30Issues = issues.filter((i) => i.location.line === 30);
+      const line31Issues = issues.filter((i) => i.location.line === 31);
+      const line32Issues = issues.filter((i) => i.location.line === 32);
+
+      // Line 29: new Date() - date-render error
+      expect(line29Issues).toHaveLength(1);
+      expect(line29Issues[0].message).toContain('Date created during render');
+      // Lines 30-32: separate locale-format errors
+      expect(line30Issues).toHaveLength(1);
+      expect(line31Issues).toHaveLength(1);
+      expect(line32Issues).toHaveLength(1);
+    });
+  });
+
   describe('issue severity', () => {
     it('should mark random values as errors', () => {
       const componentPath = path.join(
