@@ -26,7 +26,7 @@ Add a new check to roto-rooter: `/add-check <check-name>`
 
 3. **Register** - In `src/analyzer.ts`: import the check, add to `enabledChecks` default list, add invocation block
 
-4. **Tests** - Create `test/<name>-check.test.ts` using vitest; add fixtures to `test/fixtures/sample-app/` if needed
+4. **Tests** - Create `test/<name>-check.test.ts` using vitest; add fixtures to `test/fixtures/sample-app/` if needed. CLI integration tests in `test/cli.test.ts` cover end-to-end behavior.
 
 5. **Fix Integration Tests** - If the check generates auto-fixes, add end-to-end tests in `test/fix-integration.test.ts` that verify:
    - Issue is detected with a fix

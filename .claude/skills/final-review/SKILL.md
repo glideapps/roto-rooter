@@ -20,7 +20,8 @@ Run `git fetch origin main` to ensure comparisons use the latest main branch.
 - Run `git diff main --name-only` to identify changed files
 - Confirm each `src/checks/*.ts` has a corresponding `test/*.test.ts`
 - For checks with auto-fix support (issues have `fix` property), verify integration tests exist in `test/fix-integration.test.ts`
-- Run `npm run test:run`
+- CLI integration tests in `test/cli.test.ts` verify the built artifact runs correctly
+- Run `npm test`
 
 **Fix:** Write missing tests, fix failing tests, re-run until green.
 
@@ -51,6 +52,8 @@ For new checks in `src/checks/`:
 ```bash
 npm run typecheck && npm run lint && npm run build && npm test
 ```
+
+The test suite includes CLI integration tests that spawn the built `dist/cli.js` artifact, verifying the bundle is runnable.
 
 **Fix:** Resolve type errors, lint errors, build errors. Re-run until zero errors/warnings.
 

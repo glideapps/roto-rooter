@@ -1,19 +1,15 @@
-#!/usr/bin/env node
-
-import * as fs from 'fs';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 import { analyze } from './analyzer.js';
 import { applyFixes } from './fixer.js';
 import type { CliOptions, FixResult } from './types.js';
 import { formatIssues } from './utils/format-issue.js';
 import { formatResultJson } from './utils/format-json.js';
 
+// Injected by esbuild at build time
+declare const __VERSION__: string;
+
 function getVersion(): string {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const packageJsonPath = path.resolve(__dirname, '..', 'package.json');
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-  return packageJson.version;
+  return typeof __VERSION__ !== 'undefined' ? __VERSION__ : 'dev';
 }
 
 function main(): void {
