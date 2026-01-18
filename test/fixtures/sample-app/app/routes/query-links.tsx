@@ -20,7 +20,9 @@ export default function QueryLinksPage() {
       <Link to="/tasks#completed">Tasks (completed section)</Link>
 
       {/* Valid: both query string and hash */}
-      <Link to="/employees?status=active#results">Active Employees Results</Link>
+      <Link to="/employees?status=active#results">
+        Active Employees Results
+      </Link>
 
       {/* Anchor tags with query strings */}
       <a href="/feedback?source=header">Give Feedback</a>
