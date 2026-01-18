@@ -4,6 +4,7 @@ import type {
   ComponentAnalysis,
   RouteDefinition,
 } from '../types.js';
+import { findBestMatch } from '../utils/suggestion.js';
 
 /**
  * Check route parameter consistency
@@ -56,7 +57,7 @@ function validateParamUsage(
     if (hook.hook === 'useParams' && hook.accessedParams) {
       for (const param of hook.accessedParams) {
         if (!routeParams.has(param)) {
-          issues.push({
+          const issue: AnalyzerIssue = {
             category: 'params',
             severity: 'error',
             message: `useParams() accesses "${param}" but route has no :${param} parameter`,
@@ -66,7 +67,36 @@ function validateParamUsage(
               route.params.length > 0
                 ? `Available params: ${route.params.map((p) => ':' + p).join(', ')}`
                 : `Route ${route.path} has no parameters`,
-          });
+          };
+
+          // Try to create a fix if we can determine the correct param
+          const paramSpan = hook.paramSpans?.get(param);
+          if (paramSpan && route.params.length > 0) {
+            // If there's only one route param, rename to it
+            // Otherwise, use fuzzy matching
+            let correctParam: string | undefined;
+            if (route.params.length === 1) {
+              correctParam = route.params[0];
+            } else {
+              correctParam = findBestMatch(param, route.params);
+            }
+
+            if (correctParam) {
+              issue.fix = {
+                description: `Renamed "${param}" to "${correctParam}"`,
+                edits: [
+                  {
+                    file: paramSpan.file,
+                    start: paramSpan.start,
+                    end: paramSpan.end,
+                    newText: correctParam,
+                  },
+                ],
+              };
+            }
+          }
+
+          issues.push(issue);
         }
       }
     }

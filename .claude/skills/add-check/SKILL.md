@@ -22,16 +22,23 @@ Add a new check to roto-rooter: `/add-check <check-name>`
 2. **Check file** - Create `src/checks/<name>-check.ts`:
    - Export `check<PascalName>(components: ComponentAnalysis[], routes?: RouteDefinition[], rootDir?: string): AnalyzerIssue[]`
    - Use `findBestMatch()` from `../utils/suggestion.js` for typo suggestions
+   - Add `fix` property to issues when auto-fix is possible (see "Auto-Fix Guidelines" below)
 
 3. **Register** - In `src/analyzer.ts`: import the check, add to `enabledChecks` default list, add invocation block
 
 4. **Tests** - Create `test/<name>-check.test.ts` using vitest; add fixtures to `test/fixtures/sample-app/` if needed
 
-5. **Parser** (if needed) - Extend `component-parser.ts`, `route-parser.ts`, or `action-parser.ts` for new AST patterns
+5. **Fix Integration Tests** - If the check generates auto-fixes, add end-to-end tests in `test/fix-integration.test.ts` that verify:
+   - Issue is detected with a fix
+   - `applyFixes()` modifies files correctly
+   - Re-running `analyze()` shows the issue is resolved
+   - See existing tests in `fix-integration.test.ts` for the pattern
 
-6. **Documentation** - Update `README.md` and `CLAUDE.md` to list the new check
+6. **Parser** (if needed) - Extend `component-parser.ts`, `route-parser.ts`, or `action-parser.ts` for new AST patterns
 
-7. **Verify** - Run `npm test`
+7. **Documentation** - Update `README.md` and `CLAUDE.md` to list the new check
+
+8. **Verify** - Run `npm test`
 
 ## Summary Output
 
@@ -57,6 +64,37 @@ app/routes/example.tsx:15:5 error [<check-name>] <Error message here>
 
 Found 1 issue (1 error, 0 warnings)
 ```
+
+## Auto-Fix Guidelines
+
+When an issue has a deterministic fix that won't introduce other problems, add an auto-fix:
+
+1. **Track source spans** - In the parser, capture `SourceSpan` for any values that might need fixing (attribute values, identifiers, etc.) using `getNodeSpan()` from `ast-utils.ts`
+
+2. **Create fix edits** - In the check, when a fix is possible:
+
+   ```typescript
+   if (suggestion && attributeSpan) {
+     issue.fix = {
+       description: `Replaced "${badValue}" with "${suggestion}"`,
+       edits: [
+         {
+           file: attributeSpan.file,
+           start: attributeSpan.start,
+           end: attributeSpan.end,
+           newText: `"${suggestion}"`,
+         },
+       ],
+     };
+   }
+   ```
+
+3. **Fixable vs unfixable** - Only auto-fix when:
+   - The fix is deterministic (e.g., typo correction with fuzzy match)
+   - No business logic is required (don't auto-generate loaders/actions)
+   - The fix won't break other code (be conservative)
+
+4. **Test the fix** - Add integration tests in `test/fix-integration.test.ts` that verify the complete cycle
 
 ## Issue Guidelines
 

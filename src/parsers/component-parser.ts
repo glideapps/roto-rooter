@@ -6,6 +6,7 @@ import type {
   FormReference,
   DataHookReference,
   HydrationRisk,
+  SourceSpan,
 } from '../types.js';
 import {
   parseFile,
@@ -13,9 +14,11 @@ import {
   isJsxElementWithName,
   getJsxAttribute,
   getJsxAttributeStringValue,
+  getJsxAttributeStringValueWithSpan,
   isCallTo,
   isExported,
   getLineAndColumn,
+  getNodeSpan,
 } from '../utils/ast-utils.js';
 
 /**
@@ -185,29 +188,32 @@ function extractLinkReference(
     return undefined;
   }
 
-  const value = getJsxAttributeStringValue(attr);
-  if (!value) {
+  const valueWithSpan = getJsxAttributeStringValueWithSpan(attr);
+  if (!valueWithSpan) {
     // Complex expression we can't analyze
     return undefined;
   }
 
   // Skip external URLs and hash links
-  if (isExternalOrHash(value.value)) {
+  if (isExternalOrHash(valueWithSpan.value)) {
     return undefined;
   }
 
   const pos = getLineAndColumn(sourceFile, element.getStart());
 
   return {
-    href: value.value,
-    isDynamic: value.isDynamic,
-    pattern: value.isDynamic ? normalizeToPattern(value.value) : undefined,
+    href: valueWithSpan.value,
+    isDynamic: valueWithSpan.isDynamic,
+    pattern: valueWithSpan.isDynamic
+      ? normalizeToPattern(valueWithSpan.value)
+      : undefined,
     location: {
       file: filePath,
       line: pos.line,
       column: pos.column,
     },
     type: 'link',
+    attributeSpan: getNodeSpan(sourceFile, valueWithSpan.valueNode, filePath),
   };
 }
 
@@ -224,28 +230,31 @@ function extractAnchorReference(
     return undefined;
   }
 
-  const value = getJsxAttributeStringValue(hrefAttr);
-  if (!value) {
+  const valueWithSpan = getJsxAttributeStringValueWithSpan(hrefAttr);
+  if (!valueWithSpan) {
     return undefined;
   }
 
   // Skip external URLs and hash links
-  if (isExternalOrHash(value.value)) {
+  if (isExternalOrHash(valueWithSpan.value)) {
     return undefined;
   }
 
   const pos = getLineAndColumn(sourceFile, element.getStart());
 
   return {
-    href: value.value,
-    isDynamic: value.isDynamic,
-    pattern: value.isDynamic ? normalizeToPattern(value.value) : undefined,
+    href: valueWithSpan.value,
+    isDynamic: valueWithSpan.isDynamic,
+    pattern: valueWithSpan.isDynamic
+      ? normalizeToPattern(valueWithSpan.value)
+      : undefined,
     location: {
       file: filePath,
       line: pos.line,
       column: pos.column,
     },
     type: 'link',
+    attributeSpan: getNodeSpan(sourceFile, valueWithSpan.valueNode, filePath),
   };
 }
 
@@ -261,9 +270,13 @@ function extractFormReference(
   const methodAttr = getJsxAttribute(element, 'method');
 
   let action: string | undefined;
+  let actionSpan: SourceSpan | undefined;
   if (actionAttr) {
-    const value = getJsxAttributeStringValue(actionAttr);
-    action = value?.value;
+    const valueWithSpan = getJsxAttributeStringValueWithSpan(actionAttr);
+    if (valueWithSpan) {
+      action = valueWithSpan.value;
+      actionSpan = getNodeSpan(sourceFile, valueWithSpan.valueNode, filePath);
+    }
   }
 
   let method: FormReference['method'] = 'post';
@@ -291,6 +304,7 @@ function extractFormReference(
       line: pos.line,
       column: pos.column,
     },
+    actionSpan,
   };
 }
 
@@ -336,18 +350,20 @@ function extractRedirectReference(
 
   const arg = call.arguments[0];
 
-  let value: { value: string; isDynamic: boolean } | undefined;
+  let value:
+    | { value: string; isDynamic: boolean; valueNode: ts.Node }
+    | undefined;
 
   if (ts.isStringLiteral(arg)) {
-    value = { value: arg.text, isDynamic: false };
+    value = { value: arg.text, isDynamic: false, valueNode: arg };
   } else if (ts.isTemplateExpression(arg)) {
     let pattern = arg.head.text;
     for (const span of arg.templateSpans) {
       pattern += ':param' + span.literal.text;
     }
-    value = { value: pattern, isDynamic: true };
+    value = { value: pattern, isDynamic: true, valueNode: arg };
   } else if (ts.isNoSubstitutionTemplateLiteral(arg)) {
-    value = { value: arg.text, isDynamic: false };
+    value = { value: arg.text, isDynamic: false, valueNode: arg };
   }
 
   if (!value || isExternalOrHash(value.value)) {
@@ -366,6 +382,7 @@ function extractRedirectReference(
       column: pos.column,
     },
     type: 'redirect',
+    attributeSpan: getNodeSpan(sourceFile, value.valueNode, filePath),
   };
 }
 
@@ -383,18 +400,20 @@ function extractNavigateReference(
 
   const arg = call.arguments[0];
 
-  let value: { value: string; isDynamic: boolean } | undefined;
+  let value:
+    | { value: string; isDynamic: boolean; valueNode: ts.Node }
+    | undefined;
 
   if (ts.isStringLiteral(arg)) {
-    value = { value: arg.text, isDynamic: false };
+    value = { value: arg.text, isDynamic: false, valueNode: arg };
   } else if (ts.isTemplateExpression(arg)) {
     let pattern = arg.head.text;
     for (const span of arg.templateSpans) {
       pattern += ':param' + span.literal.text;
     }
-    value = { value: pattern, isDynamic: true };
+    value = { value: pattern, isDynamic: true, valueNode: arg };
   } else if (ts.isNoSubstitutionTemplateLiteral(arg)) {
-    value = { value: arg.text, isDynamic: false };
+    value = { value: arg.text, isDynamic: false, valueNode: arg };
   }
 
   if (!value || isExternalOrHash(value.value)) {
@@ -413,6 +432,7 @@ function extractNavigateReference(
       column: pos.column,
     },
     type: 'navigate',
+    attributeSpan: getNodeSpan(sourceFile, value.valueNode, filePath),
   };
 }
 
@@ -452,6 +472,7 @@ function extractUseParamsReference(
   // For now, we'll do basic tracking
 
   const accessedParams: string[] = [];
+  const paramSpans = new Map<string, SourceSpan>();
 
   // Look at the parent - if it's a variable declaration, track property access
   const parent = call.parent;
@@ -460,7 +481,12 @@ function extractUseParamsReference(
     if (ts.isObjectBindingPattern(parent.name)) {
       for (const element of parent.name.elements) {
         if (ts.isBindingElement(element) && ts.isIdentifier(element.name)) {
-          accessedParams.push(element.name.text);
+          const paramName = element.name.text;
+          accessedParams.push(paramName);
+          paramSpans.set(
+            paramName,
+            getNodeSpan(sourceFile, element.name, filePath)
+          );
         }
       }
     }
@@ -474,6 +500,7 @@ function extractUseParamsReference(
       line: pos.line,
       column: pos.column,
     },
+    paramSpans: paramSpans.size > 0 ? paramSpans : undefined,
   };
 }
 
@@ -616,6 +643,8 @@ function detectHydrationRisk(
             code: node.getText(sourceFile),
             inUseEffect,
             hasSuppressWarning,
+            callSpan: getNodeSpan(sourceFile, node, filePath),
+            argCount: node.arguments?.length ?? 0,
           };
         }
       }
@@ -630,6 +659,7 @@ function detectHydrationRisk(
           code: node.getText(sourceFile),
           inUseEffect,
           hasSuppressWarning,
+          callSpan: getNodeSpan(sourceFile, node, filePath),
         };
       }
     }
@@ -651,6 +681,8 @@ function detectHydrationRisk(
           code: node.getText(sourceFile),
           inUseEffect,
           hasSuppressWarning,
+          callSpan: getNodeSpan(sourceFile, node, filePath),
+          argCount: node.arguments?.length ?? 0,
         };
       }
     }
@@ -686,6 +718,7 @@ function detectHydrationRisk(
             code: parent.getText(sourceFile),
             inUseEffect,
             hasSuppressWarning,
+            callSpan: getNodeSpan(sourceFile, parent, filePath),
           };
         }
       }

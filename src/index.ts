@@ -1,5 +1,6 @@
 // Public API exports
 export { analyze } from './analyzer.js';
+export { applyFixes, getEditPreview } from './fixer.js';
 export {
   parseRoutes,
   getAllRoutePaths,
@@ -12,6 +13,7 @@ export { checkLinks } from './checks/link-check.js';
 export { checkForms } from './checks/form-check.js';
 export { checkLoaders } from './checks/loader-check.js';
 export { checkParams } from './checks/params-check.js';
+export { checkHydration } from './checks/hydration-check.js';
 
 // Output formatting utilities
 export { formatIssue, formatIssues } from './utils/format-issue.js';
@@ -22,10 +24,15 @@ export type {
   LinkReference,
   FormReference,
   DataHookReference,
+  HydrationRisk,
   ComponentAnalysis,
   SourceLocation,
+  SourceSpan,
+  TextEdit,
+  IssueFix,
   AnalyzerIssue,
   AnalyzerResult,
+  FixResult,
   CliOptions,
 } from './types.js';
 

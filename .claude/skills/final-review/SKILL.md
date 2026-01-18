@@ -19,9 +19,23 @@ Run `git fetch origin main` to ensure comparisons use the latest main branch.
 
 - Run `git diff main --name-only` to identify changed files
 - Confirm each `src/checks/*.ts` has a corresponding `test/*.test.ts`
+- For checks with auto-fix support (issues have `fix` property), verify integration tests exist in `test/fix-integration.test.ts`
 - Run `npm run test:run`
 
 **Fix:** Write missing tests, fix failing tests, re-run until green.
+
+### 1b. Fix Integration Test Verification
+
+For any check that generates auto-fixes:
+
+- Verify tests exist in `test/fix-integration.test.ts` that follow the pattern:
+  1. Create fixture with known issue
+  2. Run `analyze()` to detect issue with fix
+  3. Run `applyFixes()` to apply fix
+  4. Re-run `analyze()` to verify issue is resolved
+  5. Verify file content is correct
+
+**Fix:** Add missing fix integration tests following the existing patterns.
 
 ### 2. Check Validity
 
@@ -84,7 +98,8 @@ Stage, commit, and push all fixes made during review.
 ## Final Review Results
 
 ### Test Coverage
-[x] Tests exist and pass
+[x] Unit tests exist and pass
+[x] Fix integration tests exist for auto-fixable checks
 Changes: <tests added/fixed>
 
 ### Check Validity

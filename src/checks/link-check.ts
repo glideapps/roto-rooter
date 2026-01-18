@@ -47,7 +47,7 @@ function validateLink(
 
     if (!match) {
       const suggestion = findBestMatch(pattern, allPaths);
-      return {
+      const issue: AnalyzerIssue = {
         category: 'links',
         severity: 'error',
         message: 'No matching route for dynamic link pattern',
@@ -55,6 +55,8 @@ function validateLink(
         code: `${link.type === 'link' ? 'href' : link.type}="${link.href}"`,
         suggestion: formatSuggestion(suggestion),
       };
+      // Dynamic links are not auto-fixable since they depend on runtime values
+      return issue;
     }
   } else {
     // For static links, do exact matching
@@ -62,7 +64,7 @@ function validateLink(
 
     if (!match) {
       const suggestion = findBestMatch(link.href, allPaths);
-      return {
+      const issue: AnalyzerIssue = {
         category: 'links',
         severity: 'error',
         message: 'No matching route',
@@ -70,6 +72,23 @@ function validateLink(
         code: `${link.type === 'link' ? 'href' : link.type}="${link.href}"`,
         suggestion: formatSuggestion(suggestion),
       };
+
+      // Add fix if we have a suggestion and span info
+      if (suggestion && link.attributeSpan) {
+        issue.fix = {
+          description: `Replaced "${link.href}" with "${suggestion}"`,
+          edits: [
+            {
+              file: link.attributeSpan.file,
+              start: link.attributeSpan.start,
+              end: link.attributeSpan.end,
+              newText: `"${suggestion}"`,
+            },
+          ],
+        };
+      }
+
+      return issue;
     }
   }
 
