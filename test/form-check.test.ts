@@ -75,4 +75,44 @@ describe('form-check', () => {
       expect(issues).toHaveLength(0);
     });
   });
+
+  describe('intent-based dispatch', () => {
+    it('should validate forms against their specific intent fields only', () => {
+      const routes = parseRoutes(fixturesDir);
+      const intentDispatchPath = path.join(
+        fixturesDir,
+        'app/routes/intent-dispatch.tsx'
+      );
+      const component = parseComponent(intentDispatchPath);
+
+      const issues = checkForms([component], routes, fixturesDir);
+
+      // Should have no errors because each form only needs its intent-specific fields
+      const errors = issues.filter((i) => i.severity === 'error');
+      expect(errors).toHaveLength(0);
+    });
+
+    it('should extract intent value from submit buttons with name=intent', () => {
+      const intentDispatchPath = path.join(
+        fixturesDir,
+        'app/routes/intent-dispatch.tsx'
+      );
+      const component = parseComponent(intentDispatchPath);
+
+      // Check that intent values were extracted
+      const createForm = component.forms.find(
+        (f) => f.intentValue === 'create'
+      );
+      const deleteForm = component.forms.find(
+        (f) => f.intentValue === 'delete'
+      );
+      const completeForm = component.forms.find(
+        (f) => f.intentValue === 'complete'
+      );
+
+      expect(createForm).toBeDefined();
+      expect(deleteForm).toBeDefined();
+      expect(completeForm).toBeDefined();
+    });
+  });
 });

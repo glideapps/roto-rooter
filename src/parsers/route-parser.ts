@@ -264,17 +264,21 @@ export function getAllRoutePaths(routes: RouteDefinition[]): string[] {
 
 /**
  * Check if a URL matches any route
+ * Query strings and hash fragments are stripped before matching
  */
 export function matchRoute(
   url: string,
   routes: RouteDefinition[]
 ): RouteDefinition | undefined {
+  // Strip query string and hash fragment before matching
+  const pathOnly = url.split('?')[0].split('#')[0];
+
   for (const route of routes) {
-    if (route.pattern.test(url)) {
+    if (route.pattern.test(pathOnly)) {
       return route;
     }
     if (route.children) {
-      const childMatch = matchRoute(url, route.children);
+      const childMatch = matchRoute(pathOnly, route.children);
       if (childMatch) {
         return childMatch;
       }

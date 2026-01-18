@@ -38,12 +38,44 @@ export function parseComponent(filePath: string): ComponentAnalysis {
   // Track context for hydration analysis
   const useEffectStack: ts.Node[] = [];
   const suppressWarningElements = new Set<ts.Node>();
+  // Track server-side function bodies (loader, action) - code here doesn't cause hydration issues
+  const serverFunctionBodies = new Set<ts.Node>();
 
-  // First pass: find all elements with suppressHydrationWarning
+  // First pass: find all elements with suppressHydrationWarning and server function bodies
   walkAst(sourceFile, (node) => {
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
       if (hasSuppressHydrationWarning(node)) {
         suppressWarningElements.add(node);
+      }
+    }
+
+    // Find loader/action function bodies
+    if (ts.isFunctionDeclaration(node) && node.name && isExported(node)) {
+      const name = node.name.text;
+      if (name === 'loader' || name === 'action') {
+        if (node.body) {
+          serverFunctionBodies.add(node.body);
+        }
+      }
+    }
+
+    // Also check for exported variable declarations (arrow functions)
+    if (ts.isVariableStatement(node) && isExported(node)) {
+      for (const decl of node.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name)) {
+          const name = decl.name.text;
+          if (name === 'loader' || name === 'action') {
+            if (decl.initializer) {
+              // Get the function body from arrow function or function expression
+              if (
+                ts.isArrowFunction(decl.initializer) ||
+                ts.isFunctionExpression(decl.initializer)
+              ) {
+                serverFunctionBodies.add(decl.initializer.body);
+              }
+            }
+          }
+        }
       }
     }
   });
@@ -54,16 +86,21 @@ export function parseComponent(filePath: string): ComponentAnalysis {
       useEffectStack.push(node);
     }
 
-    // Detect hydration-risky patterns
-    const hydrationRisk = detectHydrationRisk(
-      node,
-      sourceFile,
-      filePath,
-      useEffectStack.length > 0,
-      isInsideSuppressedElement(node, suppressWarningElements)
-    );
-    if (hydrationRisk) {
-      hydrationRisks.push(hydrationRisk);
+    // Skip hydration detection for code inside loader/action functions
+    const inServerFunction = isInsideServerFunction(node, serverFunctionBodies);
+
+    // Detect hydration-risky patterns (only in client-side code)
+    if (!inServerFunction) {
+      const hydrationRisk = detectHydrationRisk(
+        node,
+        sourceFile,
+        filePath,
+        useEffectStack.length > 0,
+        isInsideSuppressedElement(node, suppressWarningElements)
+      );
+      if (hydrationRisk) {
+        hydrationRisks.push(hydrationRisk);
+      }
     }
     // Check for Link components
     if (isJsxElementWithName(node, 'Link')) {
@@ -290,8 +327,11 @@ function extractFormReference(
     }
   }
 
-  // Extract input names from form children
-  const inputNames = extractFormInputNames(element, sourceFile);
+  // Extract input names and intent value from form children
+  const { inputNames, intentValue } = extractFormInputNamesAndIntent(
+    element,
+    sourceFile
+  );
 
   const pos = getLineAndColumn(sourceFile, element.getStart());
 
@@ -299,6 +339,7 @@ function extractFormReference(
     action,
     method,
     inputNames,
+    intentValue,
     location: {
       file: filePath,
       line: pos.line,
@@ -309,31 +350,74 @@ function extractFormReference(
 }
 
 /**
- * Extract input names from form children
+ * Extract input names and intent value from form children
+ * Looks for:
+ * - Input/select/textarea elements with name attribute
+ * - Button elements with name="intent" and value attribute
+ * - Hidden inputs with name="intent" and value attribute
  */
-function extractFormInputNames(
+function extractFormInputNamesAndIntent(
   element: ts.JsxElement | ts.JsxSelfClosingElement,
   _sourceFile: ts.SourceFile
-): string[] {
+): { inputNames: string[]; intentValue: string | undefined } {
   const names: string[] = [];
+  let intentValue: string | undefined;
 
   walkAst(element, (node) => {
+    // Check for input, select, textarea, checkbox with name attribute
+    // Also check PascalCase variants for UI component libraries
     if (
       isJsxElementWithName(node, 'input') ||
       isJsxElementWithName(node, 'select') ||
-      isJsxElementWithName(node, 'textarea')
+      isJsxElementWithName(node, 'textarea') ||
+      isJsxElementWithName(node, 'Input') ||
+      isJsxElementWithName(node, 'Select') ||
+      isJsxElementWithName(node, 'Textarea') ||
+      isJsxElementWithName(node, 'Checkbox')
     ) {
       const nameAttr = getJsxAttribute(node, 'name');
       if (nameAttr) {
         const value = getJsxAttributeStringValue(nameAttr);
         if (value) {
           names.push(value.value);
+
+          // Check if this is an intent hidden input
+          if (value.value === 'intent') {
+            const valueAttr = getJsxAttribute(node, 'value');
+            if (valueAttr) {
+              const intentVal = getJsxAttributeStringValue(valueAttr);
+              if (intentVal) {
+                intentValue = intentVal.value;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Check for button with name="intent" (submit buttons that set intent)
+    if (
+      isJsxElementWithName(node, 'button') ||
+      isJsxElementWithName(node, 'Button')
+    ) {
+      const nameAttr = getJsxAttribute(node, 'name');
+      if (nameAttr) {
+        const nameValue = getJsxAttributeStringValue(nameAttr);
+        if (nameValue && nameValue.value === 'intent') {
+          names.push('intent');
+          const valueAttr = getJsxAttribute(node, 'value');
+          if (valueAttr) {
+            const intentVal = getJsxAttributeStringValue(valueAttr);
+            if (intentVal) {
+              intentValue = intentVal.value;
+            }
+          }
         }
       }
     }
   });
 
-  return names;
+  return { inputNames: names, intentValue };
 }
 
 /**
@@ -561,6 +645,24 @@ function isInsideSuppressedElement(
   let current: ts.Node | undefined = node;
   while (current) {
     if (suppressedElements.has(current)) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
+/**
+ * Check if a node is inside a server-side function (loader or action)
+ * Code inside these functions runs on the server and doesn't cause hydration issues
+ */
+function isInsideServerFunction(
+  node: ts.Node,
+  serverFunctionBodies: Set<ts.Node>
+): boolean {
+  let current: ts.Node | undefined = node;
+  while (current) {
+    if (serverFunctionBodies.has(current)) {
       return true;
     }
     current = current.parent;

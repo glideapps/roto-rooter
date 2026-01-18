@@ -141,6 +141,9 @@ function validateForm(
 
 /**
  * Validate that form fields align with what the action expects
+ *
+ * When the action uses intent-based dispatch and the form has a known intent value,
+ * we only validate against the fields used in that specific intent branch.
  */
 function validateFormFields(
   form: ComponentAnalysis['forms'][0],
@@ -150,7 +153,27 @@ function validateFormFields(
   const issues: AnalyzerIssue[] = [];
 
   const formFields = new Set(form.inputNames);
-  const actionFields = new Set(exports.actionFields ?? []);
+
+  // Determine which action fields to check against
+  let actionFieldsToCheck: string[];
+
+  // If the form has an intent value and we have intent-based field groups, use those
+  if (form.intentValue && exports.intentFieldGroups?.has(form.intentValue)) {
+    actionFieldsToCheck = exports.intentFieldGroups.get(form.intentValue)!;
+  } else if (
+    form.intentValue &&
+    exports.intentFieldGroups &&
+    exports.intentFieldGroups.size > 0
+  ) {
+    // Form has intent but we don't recognize it - skip validation
+    // This could be a typo or the action uses a different pattern
+    return issues;
+  } else {
+    // No intent-based dispatch or form has no intent - use all action fields
+    actionFieldsToCheck = exports.actionFields ?? [];
+  }
+
+  const actionFields = new Set(actionFieldsToCheck);
 
   // Skip validation if action doesn't read any fields (might use Object.fromEntries or similar)
   if (actionFields.size === 0) {
@@ -177,19 +200,22 @@ function validateFormFields(
   }
 
   // Check for form fields the action never reads (warning - might be intentional)
-  for (const formField of formFields) {
-    if (!actionFields.has(formField)) {
-      const formCode = form.action
-        ? `<Form action="${form.action}">`
-        : '<Form>';
-      issues.push({
-        category: 'forms',
-        severity: 'warning',
-        message: `Form field '${formField}' is never read by the action`,
-        location: form.location,
-        code: formCode,
-        suggestion: `Remove unused input or add formData.get('${formField}') to the action`,
-      });
+  // Only do this if we're checking all fields (not intent-specific)
+  if (!form.intentValue || !exports.intentFieldGroups?.has(form.intentValue)) {
+    for (const formField of formFields) {
+      if (!actionFields.has(formField)) {
+        const formCode = form.action
+          ? `<Form action="${form.action}">`
+          : '<Form>';
+        issues.push({
+          category: 'forms',
+          severity: 'warning',
+          message: `Form field '${formField}' is never read by the action`,
+          location: form.location,
+          code: formCode,
+          suggestion: `Remove unused input or add formData.get('${formField}') to the action`,
+        });
+      }
     }
   }
 

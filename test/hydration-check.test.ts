@@ -153,6 +153,33 @@ describe('hydration-check', () => {
       );
       expect(safeFormattedIssues).toHaveLength(0);
     });
+
+    it('should not flag Date operations in loader function', () => {
+      const componentPath = path.join(
+        fixturesDir,
+        'app/routes/server-dates.tsx'
+      );
+      const component = parseComponent(componentPath);
+      const issues = checkHydration([component]);
+
+      // Loader runs server-side only, so no hydration issues
+      expect(issues).toHaveLength(0);
+    });
+
+    it('should not flag Date operations in action function', () => {
+      const componentPath = path.join(
+        fixturesDir,
+        'app/routes/server-dates.tsx'
+      );
+      const component = parseComponent(componentPath);
+
+      // Verify the component has loader and action
+      expect(component.hasLoader).toBe(true);
+      expect(component.hasAction).toBe(true);
+
+      // No hydration risks should be detected since all Date ops are in server functions
+      expect(component.hydrationRisks).toHaveLength(0);
+    });
   });
 
   describe('issue severity', () => {

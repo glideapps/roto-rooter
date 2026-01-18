@@ -9,5 +9,8 @@ export default [
     route('/tasks', 'routes/tasks.tsx'),
     route('/contact', 'routes/contact.tsx'),
     route('/feedback', 'routes/feedback.tsx'),
+    route('/intent-dispatch', 'routes/intent-dispatch.tsx'),
+    route('/query-links', 'routes/query-links.tsx'),
+    route('/server-dates', 'routes/server-dates.tsx'),
   ]),
 ] satisfies RouteConfig;
