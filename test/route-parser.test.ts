@@ -14,7 +14,7 @@ describe('route-parser', () => {
     it('should parse routes from app/routes.ts', () => {
       const routes = parseRoutes(fixturesDir);
 
-      expect(routes).toHaveLength(7);
+      expect(routes).toHaveLength(10);
       expect(routes.map((r) => r.path)).toEqual([
         '/',
         '/employees',
@@ -23,6 +23,9 @@ describe('route-parser', () => {
         '/tasks',
         '/contact',
         '/feedback',
+        '/intent-dispatch',
+        '/query-links',
+        '/server-dates',
       ]);
     });
 

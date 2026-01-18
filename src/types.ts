@@ -44,6 +44,8 @@ export interface FormReference {
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
   /** Input names within the form */
   inputNames: string[];
+  /** The intent value from a button/input with name="intent" */
+  intentValue?: string;
   /** Source location */
   location: SourceLocation;
   /** Span of the action attribute value for auto-fix */

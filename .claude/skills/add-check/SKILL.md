@@ -26,7 +26,7 @@ Add a new check to roto-rooter: `/add-check <check-name>`
 
 3. **Register** - In `src/analyzer.ts`: import the check, add to `enabledChecks` default list, add invocation block
 
-4. **Tests** - Create `test/<name>-check.test.ts` using vitest; add fixtures to `test/fixtures/sample-app/` if needed. CLI integration tests in `test/cli.test.ts` cover end-to-end behavior.
+4. **Tests** - Create `test/<name>-check.test.ts` using vitest. **Always add realistic fixtures** to `test/fixtures/sample-app/app/routes/` and register them in `routes.ts`. Tests should use these fixtures to verify behavior. CLI integration tests in `test/cli.test.ts` cover end-to-end behavior.
 
 5. **Fix Integration Tests** - If the check generates auto-fixes, add end-to-end tests in `test/fix-integration.test.ts` that verify:
    - Issue is detected with a fix
@@ -95,6 +95,31 @@ When an issue has a deterministic fix that won't introduce other problems, add a
    - The fix won't break other code (be conservative)
 
 4. **Test the fix** - Add integration tests in `test/fix-integration.test.ts` that verify the complete cycle
+
+## Test Fixture Requirements
+
+Every check must have realistic test fixtures that demonstrate both positive and negative cases:
+
+1. **Create fixture file** - Add a `.tsx` file to `test/fixtures/sample-app/app/routes/` that contains:
+   - Real-world patterns the check should catch (positive cases)
+   - Valid patterns the check should NOT flag (negative cases / false positive prevention)
+
+2. **Register the route** - Add the fixture to `test/fixtures/sample-app/app/routes.ts`
+
+3. **Update route count** - Update the route count in `test/route-parser.test.ts`
+
+4. **Write fixture-based tests** - Tests should:
+   - Parse the fixture using `parseComponent()`
+   - Run the check against it
+   - Verify both that issues ARE found for problematic patterns AND that issues are NOT found for valid patterns
+
+Example fixtures:
+
+- `query-links.tsx` - Links with query strings and hash fragments (should not flag)
+- `intent-dispatch.tsx` - Forms with intent-based dispatch (should validate per-intent)
+- `server-dates.tsx` - Date operations in loader/action only (should not flag hydration)
+- `hydration-issues.tsx` - Real hydration risks (should flag)
+- `hydration-safe.tsx` - Safe hydration patterns (should not flag)
 
 ## Issue Guidelines
 

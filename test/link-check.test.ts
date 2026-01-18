@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as path from 'path';
-import { parseRoutes } from '../src/parsers/route-parser.js';
+import { parseRoutes, matchRoute } from '../src/parsers/route-parser.js';
 import { parseComponent } from '../src/parsers/component-parser.js';
 import { checkLinks } from '../src/checks/link-check.js';
 
@@ -50,5 +50,43 @@ describe('link-check', () => {
     const typoIssue = issues.find((i) => i.code?.includes('/employeees'));
 
     expect(typoIssue?.suggestion).toContain('/employees');
+  });
+
+  it('should match routes with query strings', () => {
+    const routes = parseRoutes(fixturesDir);
+
+    // URL with query string should match the base route
+    const match = matchRoute('/employees?status=active', routes);
+    expect(match).toBeDefined();
+    expect(match?.path).toBe('/employees');
+  });
+
+  it('should match routes with hash fragments', () => {
+    const routes = parseRoutes(fixturesDir);
+
+    // URL with hash fragment should match the base route
+    const match = matchRoute('/employees#section1', routes);
+    expect(match).toBeDefined();
+    expect(match?.path).toBe('/employees');
+  });
+
+  it('should match routes with both query string and hash', () => {
+    const routes = parseRoutes(fixturesDir);
+
+    // URL with both query string and hash should match the base route
+    const match = matchRoute('/employees?status=active#section1', routes);
+    expect(match).toBeDefined();
+    expect(match?.path).toBe('/employees');
+  });
+
+  it('should not flag links with query strings in fixture', () => {
+    const routes = parseRoutes(fixturesDir);
+    const queryLinksPath = path.join(fixturesDir, 'app/routes/query-links.tsx');
+    const component = parseComponent(queryLinksPath);
+
+    const issues = checkLinks([component], routes);
+
+    // All links in query-links.tsx should be valid (base paths exist)
+    expect(issues).toHaveLength(0);
   });
 });
