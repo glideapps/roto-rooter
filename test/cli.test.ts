@@ -77,7 +77,7 @@ describe('cli', () => {
 
   it('should analyze files and find issues', () => {
     const dashboardPath = path.join(fixturesDir, 'app/routes/dashboard.tsx');
-    const { stdout, status } = runCli(['--app', fixturesDir, dashboardPath]);
+    const { stdout, status } = runCli(['--root', fixturesDir, dashboardPath]);
 
     // Should exit with error code because there are issues
     expect(status).toBe(1);
@@ -88,7 +88,7 @@ describe('cli', () => {
   it('should output JSON with --format json', () => {
     const dashboardPath = path.join(fixturesDir, 'app/routes/dashboard.tsx');
     const { stdout, status } = runCli([
-      '--app',
+      '--root',
       fixturesDir,
       '--format',
       'json',
@@ -105,7 +105,7 @@ describe('cli', () => {
   it('should run specific checks with --check flag', () => {
     const dashboardPath = path.join(fixturesDir, 'app/routes/dashboard.tsx');
     const { stdout: linksOnly } = runCli([
-      '--app',
+      '--root',
       fixturesDir,
       '--check',
       'links',

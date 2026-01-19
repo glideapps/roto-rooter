@@ -77,9 +77,11 @@ Check for:
 
 Check `package.json` version against change scope:
 
-- **Major:** Breaking changes
-- **Minor:** New checks added
-- **Patch:** Any other change
+- **Major:** Breaking changes (removed features, incompatible API changes)
+- **Minor:** New checks or features added
+- **Patch:** Bug fixes, CLI option changes, documentation updates, refactoring
+
+Any user-facing change requires at least a patch bump. This includes renaming CLI options, changing output formats, or modifying behavior even if functionality is preserved.
 
 **Fix:** Update version in `package.json` if needed.
 
