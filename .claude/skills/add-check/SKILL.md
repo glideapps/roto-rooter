@@ -11,7 +11,7 @@ Add a new check to roto-rooter: `/add-check <check-name>`
 
 **Only add checks that require cross-file application context.** This tool analyzes route/component relationships that ESLint cannot see.
 
-**Add** checks that: cross-reference routes, components, and exports; validate references match actual application structure; require multi-file AST analysis.
+**Add** checks that: cross-reference routes, components, and exports; validate references match actual application structure; require multi-file AST analysis; validate against external schema files (e.g., Drizzle ORM schema).
 
 **Reject** checks that: can be an ESLint rule; examine single files in isolation; check generic React/TypeScript patterns. If rejectable, explain why and recommend the appropriate ESLint rule instead.
 
@@ -148,11 +148,21 @@ When in doubt, prefer `error`. Users can configure checks to ignore specific iss
 
 ## Existing Checks
 
-| Category    | File                   | Validates                                                  |
-| ----------- | ---------------------- | ---------------------------------------------------------- |
-| links       | `link-check.ts`        | `<Link>`, `<a>`, `redirect()`, `navigate()` targets        |
-| forms       | `form-check.ts`        | `<Form>` actions + field/formData.get() alignment          |
-| loader      | `loader-check.ts`      | `useLoaderData()`/`useActionData()` usage                  |
-| params      | `params-check.ts`      | `useParams()` accesses defined route params                |
-| hydration   | `hydration-check.ts`   | SSR hydration mismatch risks (dates, locale, browser APIs) |
-| persistence | `persistence-check.ts` | Database operations against Drizzle ORM schema             |
+| Category    | File                   | Validates                                                  | CLI Flags                          |
+| ----------- | ---------------------- | ---------------------------------------------------------- | ---------------------------------- |
+| links       | `link-check.ts`        | `<Link>`, `<a>`, `redirect()`, `navigate()` targets        | (enabled by default)               |
+| forms       | `form-check.ts`        | `<Form>` actions + field/formData.get() alignment          | (enabled by default)               |
+| loader      | `loader-check.ts`      | `useLoaderData()`/`useActionData()` usage                  | (enabled by default)               |
+| params      | `params-check.ts`      | `useParams()` accesses defined route params                | (enabled by default)               |
+| hydration   | `hydration-check.ts`   | SSR hydration mismatch risks (dates, locale, browser APIs) | (enabled by default)               |
+| persistence | `persistence-check.ts` | Database operations against Drizzle ORM schema             | `--orm drizzle [--drizzle-schema]` |
+
+### ORM-Aware Checks
+
+The `persistence` check demonstrates how to add ORM-aware validation:
+
+1. **Schema parser** - `src/parsers/drizzle-schema-parser.ts` parses Drizzle schema files to extract table/column/enum definitions
+2. **Operation extraction** - `src/parsers/action-parser.ts` extracts `db.insert()`, `db.update()`, `db.delete()` operations and tracks data sources
+3. **Cross-validation** - The check validates operations against the parsed schema (type mismatches, missing columns, enum validation)
+4. **CLI integration** - Uses `--orm <type>` flag to enable, with optional `--drizzle-schema` for custom paths
+5. **Auto-discovery** - Checks common locations (`db/schema.ts`, `src/db/schema.ts`, etc.) when no explicit path is provided
