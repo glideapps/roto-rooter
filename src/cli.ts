@@ -135,6 +135,24 @@ function parseArgs(args: string[]): ParsedArgs {
       continue;
     }
 
+    if (arg === '--orm') {
+      const value = args[i + 1];
+      if (value === 'drizzle') {
+        options.orm = value;
+      }
+      i += 2;
+      continue;
+    }
+
+    if (arg === '--drizzle-schema') {
+      const value = args[i + 1];
+      if (value) {
+        options.drizzleSchemaPath = path.resolve(value);
+      }
+      i += 2;
+      continue;
+    }
+
     // Positional argument - file to check
     if (!arg.startsWith('-')) {
       options.files.push(arg);
@@ -158,10 +176,12 @@ OPTIONS:
   -v, --version           Show version number
   -f, --format <format>   Output format: text (default) or json
   -c, --check <checks>    Comma-separated list of checks to run (default is all checks)
-                          Available: links, forms, loader, params, hydration
+                          Available: links, forms, loader, params, hydration, persistence
   -r, --root <path>       Project root directory containing the app/ folder (default: cwd)
   --fix                   Automatically fix issues where possible
   --dry-run               Show what would be fixed without modifying files
+  --orm <type>            Enable ORM-aware checking (available: drizzle)
+  --drizzle-schema <path> Explicit path to Drizzle schema file (auto-discovered by default)
 
 EXAMPLES:
   # Check all files in current directory
@@ -187,6 +207,12 @@ EXAMPLES:
 
   # Analyze files in a different project directory
   rr --root ./my-app ./my-app/app/routes/dashboard.tsx
+
+  # Enable Drizzle ORM persistence checking
+  rr --orm drizzle
+
+  # Drizzle checking with explicit schema path
+  rr --orm drizzle --drizzle-schema src/db/schema.ts
 `);
 }
 
