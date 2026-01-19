@@ -50,6 +50,11 @@ rr --fix app/routes/dashboard.tsx
 
   Some hydration issues are auto-fixable (e.g., adding `{ timeZone: "UTC" }` to locale methods, replacing `uuid()` with `useId()`).
 
+- **persistence**: Validates database operations against Drizzle ORM schema:
+  - Missing required columns on `db.insert()` calls
+  - Type mismatches (e.g., string from `formData.get()` to integer column)
+  - Enum columns receiving unvalidated external input
+
 ## Programmatic API
 
 ```typescript
