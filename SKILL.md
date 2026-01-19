@@ -1,6 +1,6 @@
 ---
 name: roto-rooter
-description: Static analysis for React Router applications. Use when building or debugging React Router apps to verify routes, links, forms, loaders, params, and hydration patterns.
+description: Static analysis for React Router applications. Use when building or debugging React Router apps to verify routes, links, forms, loaders, params, hydration patterns, and database persistence operations.
 allowed-tools: Bash(rr:*)
 ---
 
@@ -46,6 +46,7 @@ rr --root ./my-app              # set project root
 - **loader** - detects loader data usage issues
 - **params** - validates route params match definitions
 - **hydration** - detects hydration mismatches (Date, Math.random, window access in render)
+- **persistence** - validates database operations against Drizzle ORM schema (requires `--orm drizzle`)
 
 ## Examples
 
@@ -58,4 +59,10 @@ rr --fix
 
 # Get JSON output for CI integration
 rr --format json
+
+# Enable Drizzle ORM persistence checking (auto-discovers schema)
+rr --orm drizzle
+
+# Drizzle checking with explicit schema path
+rr --orm drizzle --drizzle-schema src/db/schema.ts
 ```

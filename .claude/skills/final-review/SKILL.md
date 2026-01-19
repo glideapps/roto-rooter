@@ -61,17 +61,18 @@ The test suite includes CLI integration tests that spawn the built `dist/cli.js`
 
 Verify all documentation sources are consistent:
 
+- `SKILL.md` - Top-level agent instructions for roto-rooter users (checks list, CLI examples)
 - `README.md` - User-facing documentation (checks list, CLI usage examples)
 - `CLAUDE.md` - Agent instructions (project structure, check implementations list)
 - `.claude/skills/add-check/SKILL.md` - Existing checks table with CLI flags
 
 Check for:
 
-- All checks in `src/checks/` are listed in all docs
+- All checks in `src/checks/` are listed in all docs (including top-level SKILL.md)
 - Placeholder vs implemented status is consistent across docs
 - Check descriptions match between files
-- CLI options in `src/cli.ts` are documented in README.md usage examples
-- New CLI flags (e.g., `--orm`, `--drizzle-schema`) have corresponding usage examples
+- CLI options in `src/cli.ts` are documented in README.md and SKILL.md usage examples
+- New CLI flags (e.g., `--orm`, `--drizzle-schema`) have corresponding usage examples in both files
 
 **Fix:** Update any inconsistent or stale documentation.
 
