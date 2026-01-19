@@ -14,5 +14,11 @@ export default [
     route('/server-dates', 'routes/server-dates.tsx'),
     route('/hydration-dedup', 'routes/hydration-dedup.tsx'),
     route('/component-inputs', 'routes/component-inputs.tsx'),
+    // Persistence check fixtures
+    route('/user-create', 'routes/user-create.tsx'),
+    route('/order-create', 'routes/order-create.tsx'),
+    route('/user-update', 'routes/user-update.tsx'),
+    route('/user-type-mismatch', 'routes/user-type-mismatch.tsx'),
+    route('/user-correct-types', 'routes/user-correct-types.tsx'),
   ]),
 ] satisfies RouteConfig;

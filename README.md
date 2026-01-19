@@ -34,6 +34,12 @@ rr --dry-run
 
 # Fix specific file(s)
 rr --fix app/routes/dashboard.tsx
+
+# Enable Drizzle ORM persistence checking (auto-discovers schema)
+rr --orm drizzle
+
+# Drizzle checking with explicit schema path
+rr --orm drizzle --drizzle-schema src/db/schema.ts
 ```
 
 ## Checks
@@ -49,6 +55,11 @@ rr --fix app/routes/dashboard.tsx
   - Browser-only API access outside `useEffect` (`window`, `document`, `localStorage`)
 
   Some hydration issues are auto-fixable (e.g., adding `{ timeZone: "UTC" }` to locale methods, replacing `uuid()` with `useId()`).
+
+- **persistence**: Validates database operations against Drizzle ORM schema. Requires `--orm drizzle` flag. Auto-discovers schema from common locations (`db/schema.ts`, `src/db/schema.ts`, etc.) or use `--drizzle-schema` for custom paths.
+  - Missing required columns on `db.insert()` calls
+  - Type mismatches (e.g., string from `formData.get()` to integer column)
+  - Enum columns receiving unvalidated external input
 
 ## Programmatic API
 

@@ -11,7 +11,7 @@ Add a new check to roto-rooter: `/add-check <check-name>`
 
 **Only add checks that require cross-file application context.** This tool analyzes route/component relationships that ESLint cannot see.
 
-**Add** checks that: cross-reference routes, components, and exports; validate references match actual application structure; require multi-file AST analysis.
+**Add** checks that: cross-reference routes, components, and exports; validate references match actual application structure; require multi-file AST analysis; validate against external schema files (e.g., Drizzle ORM schema).
 
 **Reject** checks that: can be an ESLint rule; examine single files in isolation; check generic React/TypeScript patterns. If rejectable, explain why and recommend the appropriate ESLint rule instead.
 
@@ -71,23 +71,7 @@ When an issue has a deterministic fix that won't introduce other problems, add a
 
 1. **Track source spans** - In the parser, capture `SourceSpan` for any values that might need fixing (attribute values, identifiers, etc.) using `getNodeSpan()` from `ast-utils.ts`
 
-2. **Create fix edits** - In the check, when a fix is possible:
-
-   ```typescript
-   if (suggestion && attributeSpan) {
-     issue.fix = {
-       description: `Replaced "${badValue}" with "${suggestion}"`,
-       edits: [
-         {
-           file: attributeSpan.file,
-           start: attributeSpan.start,
-           end: attributeSpan.end,
-           newText: `"${suggestion}"`,
-         },
-       ],
-     };
-   }
-   ```
+2. **Create fix edits** - Add a `fix` property with `description` and `edits` array to issues. Study existing checks for the pattern.
 
 3. **Fixable vs unfixable** - Only auto-fix when:
    - The fix is deterministic (e.g., typo correction with fuzzy match)
@@ -112,14 +96,6 @@ Every check must have realistic test fixtures that demonstrate both positive and
    - Parse the fixture using `parseComponent()`
    - Run the check against it
    - Verify both that issues ARE found for problematic patterns AND that issues are NOT found for valid patterns
-
-Example fixtures:
-
-- `query-links.tsx` - Links with query strings and hash fragments (should not flag)
-- `intent-dispatch.tsx` - Forms with intent-based dispatch (should validate per-intent)
-- `server-dates.tsx` - Date operations in loader/action only (should not flag hydration)
-- `hydration-issues.tsx` - Real hydration risks (should flag)
-- `hydration-safe.tsx` - Safe hydration patterns (should not flag)
 
 ## Issue Guidelines
 
@@ -146,12 +122,6 @@ When in doubt, prefer `error`. Users can configure checks to ignore specific iss
 - Messages: specific, actionable, include the problematic value
 - Always include accurate location (line/column) and code snippet
 
-## Existing Checks
+## Reference
 
-| Category  | File                 | Validates                                                  |
-| --------- | -------------------- | ---------------------------------------------------------- |
-| links     | `link-check.ts`      | `<Link>`, `<a>`, `redirect()`, `navigate()` targets        |
-| forms     | `form-check.ts`      | `<Form>` actions + field/formData.get() alignment          |
-| loader    | `loader-check.ts`    | `useLoaderData()`/`useActionData()` usage                  |
-| params    | `params-check.ts`    | `useParams()` accesses defined route params                |
-| hydration | `hydration-check.ts` | SSR hydration mismatch risks (dates, locale, browser APIs) |
+Study existing checks in `src/checks/` and parsers in `src/parsers/` for patterns and idioms.
