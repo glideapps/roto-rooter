@@ -71,23 +71,7 @@ When an issue has a deterministic fix that won't introduce other problems, add a
 
 1. **Track source spans** - In the parser, capture `SourceSpan` for any values that might need fixing (attribute values, identifiers, etc.) using `getNodeSpan()` from `ast-utils.ts`
 
-2. **Create fix edits** - In the check, when a fix is possible:
-
-   ```typescript
-   if (suggestion && attributeSpan) {
-     issue.fix = {
-       description: `Replaced "${badValue}" with "${suggestion}"`,
-       edits: [
-         {
-           file: attributeSpan.file,
-           start: attributeSpan.start,
-           end: attributeSpan.end,
-           newText: `"${suggestion}"`,
-         },
-       ],
-     };
-   }
-   ```
+2. **Create fix edits** - Add a `fix` property with `description` and `edits` array to issues. Study existing checks for the pattern.
 
 3. **Fixable vs unfixable** - Only auto-fix when:
    - The fix is deterministic (e.g., typo correction with fuzzy match)
@@ -112,14 +96,6 @@ Every check must have realistic test fixtures that demonstrate both positive and
    - Parse the fixture using `parseComponent()`
    - Run the check against it
    - Verify both that issues ARE found for problematic patterns AND that issues are NOT found for valid patterns
-
-Example fixtures:
-
-- `query-links.tsx` - Links with query strings and hash fragments (should not flag)
-- `intent-dispatch.tsx` - Forms with intent-based dispatch (should validate per-intent)
-- `server-dates.tsx` - Date operations in loader/action only (should not flag hydration)
-- `hydration-issues.tsx` - Real hydration risks (should flag)
-- `hydration-safe.tsx` - Safe hydration patterns (should not flag)
 
 ## Issue Guidelines
 
@@ -146,23 +122,6 @@ When in doubt, prefer `error`. Users can configure checks to ignore specific iss
 - Messages: specific, actionable, include the problematic value
 - Always include accurate location (line/column) and code snippet
 
-## Existing Checks
+## Reference
 
-| Category    | File                   | Validates                                                  | CLI Flags                          |
-| ----------- | ---------------------- | ---------------------------------------------------------- | ---------------------------------- |
-| links       | `link-check.ts`        | `<Link>`, `<a>`, `redirect()`, `navigate()` targets        | (enabled by default)               |
-| forms       | `form-check.ts`        | `<Form>` actions + field/formData.get() alignment          | (enabled by default)               |
-| loader      | `loader-check.ts`      | `useLoaderData()`/`useActionData()` usage                  | (enabled by default)               |
-| params      | `params-check.ts`      | `useParams()` accesses defined route params                | (enabled by default)               |
-| hydration   | `hydration-check.ts`   | SSR hydration mismatch risks (dates, locale, browser APIs) | (enabled by default)               |
-| persistence | `persistence-check.ts` | Database operations against Drizzle ORM schema             | `--orm drizzle [--drizzle-schema]` |
-
-### ORM-Aware Checks
-
-The `persistence` check demonstrates how to add ORM-aware validation:
-
-1. **Schema parser** - `src/parsers/drizzle-schema-parser.ts` parses Drizzle schema files to extract table/column/enum definitions
-2. **Operation extraction** - `src/parsers/action-parser.ts` extracts `db.insert()`, `db.update()`, `db.delete()` operations and tracks data sources
-3. **Cross-validation** - The check validates operations against the parsed schema (type mismatches, missing columns, enum validation)
-4. **CLI integration** - Uses `--orm <type>` flag to enable, with optional `--drizzle-schema` for custom paths
-5. **Auto-discovery** - Checks common locations (`db/schema.ts`, `src/db/schema.ts`, etc.) when no explicit path is provided
+Study existing checks in `src/checks/` and parsers in `src/parsers/` for patterns and idioms.
