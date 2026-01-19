@@ -76,6 +76,45 @@ describe('form-check', () => {
     });
   });
 
+  describe('component-wrapped form inputs', () => {
+    it('should detect PascalCase component inputs with name props', () => {
+      const componentInputsPath = path.join(
+        fixturesDir,
+        'app/routes/component-inputs.tsx'
+      );
+      const component = parseComponent(componentInputsPath);
+
+      // Should extract all input names from PascalCase components
+      expect(component.forms).toHaveLength(1);
+      const form = component.forms[0];
+
+      // Check that all the component-wrapped inputs were detected
+      expect(form.inputNames).toContain('firstName');
+      expect(form.inputNames).toContain('lastName');
+      expect(form.inputNames).toContain('email');
+      expect(form.inputNames).toContain('bio');
+      expect(form.inputNames).toContain('age');
+      expect(form.inputNames).toContain('role');
+      expect(form.inputNames).toContain('startDate');
+      expect(form.inputNames).toContain('notifications');
+    });
+
+    it('should not flag forms using component wrappers when fields match', () => {
+      const routes = parseRoutes(fixturesDir);
+      const componentInputsPath = path.join(
+        fixturesDir,
+        'app/routes/component-inputs.tsx'
+      );
+      const component = parseComponent(componentInputsPath);
+
+      const issues = checkForms([component], routes, fixturesDir);
+
+      // Should have no errors since all fields match
+      const errors = issues.filter((i) => i.severity === 'error');
+      expect(errors).toHaveLength(0);
+    });
+  });
+
   describe('intent-based dispatch', () => {
     it('should validate forms against their specific intent fields only', () => {
       const routes = parseRoutes(fixturesDir);
