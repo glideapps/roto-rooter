@@ -19,6 +19,8 @@ import {
   isExported,
   getLineAndColumn,
   getNodeSpan,
+  getJsxTagName,
+  isPascalCase,
 } from '../utils/ast-utils.js';
 
 /**
@@ -350,9 +352,77 @@ function extractFormReference(
 }
 
 /**
+ * Native HTML form input element names (lowercase)
+ */
+const NATIVE_INPUT_ELEMENTS = new Set(['input', 'select', 'textarea']);
+
+/**
+ * Check if a JSX element is likely a form input component.
+ *
+ * This uses heuristics to detect component wrappers for form inputs:
+ * 1. Native HTML elements: input, select, textarea
+ * 2. PascalCase components with a `name` prop (heuristic for UI library components)
+ *
+ * Common patterns this catches:
+ * - <Input name="x"> -> renders <input name="x">
+ * - <TextField name="x"> -> renders <input name="x">
+ * - <Select name="x"> -> renders <select name="x">
+ * - <TextArea name="x"> -> renders <textarea name="x">
+ * - <Checkbox name="x"> -> renders <input type="checkbox" name="x">
+ * - <RadioGroup name="x"> -> renders radio inputs
+ * - <DatePicker name="x"> -> renders date input
+ */
+function isLikelyFormInputElement(
+  node: ts.Node
+): node is ts.JsxElement | ts.JsxSelfClosingElement {
+  if (!ts.isJsxElement(node) && !ts.isJsxSelfClosingElement(node)) {
+    return false;
+  }
+
+  const tagName = getJsxTagName(node);
+  if (!tagName) {
+    return false;
+  }
+
+  // Native HTML form input elements
+  if (NATIVE_INPUT_ELEMENTS.has(tagName)) {
+    return true;
+  }
+
+  // PascalCase component with a name prop is likely a form input wrapper
+  // This covers UI libraries like Radix, Chakra, MUI, Shadcn, etc.
+  if (isPascalCase(tagName)) {
+    const nameAttr = getJsxAttribute(node, 'name');
+    return nameAttr !== undefined;
+  }
+
+  return false;
+}
+
+/**
+ * Check if a JSX element is likely a button element
+ */
+function isLikelyButtonElement(
+  node: ts.Node
+): node is ts.JsxElement | ts.JsxSelfClosingElement {
+  if (!ts.isJsxElement(node) && !ts.isJsxSelfClosingElement(node)) {
+    return false;
+  }
+
+  const tagName = getJsxTagName(node);
+  if (!tagName) {
+    return false;
+  }
+
+  // Native button or common Button component
+  return tagName === 'button' || tagName === 'Button';
+}
+
+/**
  * Extract input names and intent value from form children
  * Looks for:
- * - Input/select/textarea elements with name attribute
+ * - Native HTML input/select/textarea elements with name attribute
+ * - PascalCase components with a name prop (heuristic for UI library wrappers)
  * - Button elements with name="intent" and value attribute
  * - Hidden inputs with name="intent" and value attribute
  */
@@ -364,17 +434,8 @@ function extractFormInputNamesAndIntent(
   let intentValue: string | undefined;
 
   walkAst(element, (node) => {
-    // Check for input, select, textarea, checkbox with name attribute
-    // Also check PascalCase variants for UI component libraries
-    if (
-      isJsxElementWithName(node, 'input') ||
-      isJsxElementWithName(node, 'select') ||
-      isJsxElementWithName(node, 'textarea') ||
-      isJsxElementWithName(node, 'Input') ||
-      isJsxElementWithName(node, 'Select') ||
-      isJsxElementWithName(node, 'Textarea') ||
-      isJsxElementWithName(node, 'Checkbox')
-    ) {
+    // Check for form input elements (native or component wrappers)
+    if (isLikelyFormInputElement(node)) {
       const nameAttr = getJsxAttribute(node, 'name');
       if (nameAttr) {
         const value = getJsxAttributeStringValue(nameAttr);
@@ -396,10 +457,7 @@ function extractFormInputNamesAndIntent(
     }
 
     // Check for button with name="intent" (submit buttons that set intent)
-    if (
-      isJsxElementWithName(node, 'button') ||
-      isJsxElementWithName(node, 'Button')
-    ) {
+    if (isLikelyButtonElement(node)) {
       const nameAttr = getJsxAttribute(node, 'name');
       if (nameAttr) {
         const nameValue = getJsxAttributeStringValue(nameAttr);

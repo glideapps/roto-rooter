@@ -230,3 +230,28 @@ export function getNodeSpan(
     column: character + 1,
   };
 }
+
+/**
+ * Get the tag name of a JSX element if it's an identifier
+ */
+export function getJsxTagName(
+  node: ts.JsxElement | ts.JsxSelfClosingElement
+): string | undefined {
+  const tagName = ts.isJsxElement(node)
+    ? node.openingElement.tagName
+    : node.tagName;
+
+  if (ts.isIdentifier(tagName)) {
+    return tagName.text;
+  }
+  return undefined;
+}
+
+/**
+ * Check if a string starts with an uppercase letter (PascalCase component)
+ */
+export function isPascalCase(str: string): boolean {
+  return (
+    str.length > 0 && str[0] === str[0].toUpperCase() && /^[A-Z]/.test(str)
+  );
+}

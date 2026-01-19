@@ -13,5 +13,6 @@ export default [
     route('/query-links', 'routes/query-links.tsx'),
     route('/server-dates', 'routes/server-dates.tsx'),
     route('/hydration-dedup', 'routes/hydration-dedup.tsx'),
+    route('/component-inputs', 'routes/component-inputs.tsx'),
   ]),
 ] satisfies RouteConfig;
