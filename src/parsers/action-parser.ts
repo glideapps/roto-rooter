@@ -587,10 +587,10 @@ function parseDbCallChain(
         valuesCall = call;
 
         // Look for db.insert in the chain
-        let inner = expr.expression;
+        let inner: ts.Expression = expr.expression;
         while (inner) {
           if (ts.isCallExpression(inner)) {
-            const innerExpr = inner.expression;
+            const innerExpr: ts.LeftHandSideExpression = inner.expression;
             if (ts.isPropertyAccessExpression(innerExpr)) {
               const innerMethod = innerExpr.name.text;
               if (
@@ -605,10 +605,10 @@ function parseDbCallChain(
                 }
                 break;
               }
+              inner = innerExpr.expression;
+            } else {
+              break;
             }
-            inner = ts.isPropertyAccessExpression(innerExpr)
-              ? innerExpr.expression
-              : (undefined as unknown as ts.Expression);
           } else {
             break;
           }
