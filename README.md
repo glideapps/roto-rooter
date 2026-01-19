@@ -23,8 +23,8 @@ rr --check links,forms
 # Output as JSON
 rr --format json
 
-# Set app directory
-rr --app ./my-app
+# Set project root (the directory containing the app/ folder)
+rr --root ./my-app
 
 # Automatically fix issues where possible
 rr --fix

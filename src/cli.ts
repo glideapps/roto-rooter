@@ -126,7 +126,7 @@ function parseArgs(args: string[]): ParsedArgs {
       continue;
     }
 
-    if (arg === '--app' || arg === '-a') {
+    if (arg === '--root' || arg === '-r') {
       const value = args[i + 1];
       if (value) {
         options.root = path.resolve(value);
@@ -159,7 +159,7 @@ OPTIONS:
   -f, --format <format>   Output format: text (default) or json
   -c, --check <checks>    Comma-separated list of checks to run (default is all checks)
                           Available: links, forms, loader, params, hydration
-  -a, --app <path>        Root directory of the app to roto-root (default: current directory)
+  -r, --root <path>       Project root directory containing the app/ folder (default: cwd)
   --fix                   Automatically fix issues where possible
   --dry-run               Show what would be fixed without modifying files
 
@@ -185,8 +185,8 @@ EXAMPLES:
   # Fix specific file(s)
   rr --fix app/routes/dashboard.tsx
 
-  # Analyze files in the context of a different app
-  rr --app ./my-app ./my-app/app/routes/dashboard.tsx
+  # Analyze files in a different project directory
+  rr --root ./my-app ./my-app/app/routes/dashboard.tsx
 `);
 }
 
