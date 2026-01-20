@@ -255,3 +255,43 @@ export function isPascalCase(str: string): boolean {
     str.length > 0 && str[0] === str[0].toUpperCase() && /^[A-Z]/.test(str)
   );
 }
+
+/**
+ * Extract text content from JSX children (for button text, etc.)
+ * Returns the concatenated text content of all text nodes.
+ * Returns undefined if no text content is found.
+ */
+export function getJsxTextContent(
+  element: ts.JsxElement | ts.JsxSelfClosingElement
+): string | undefined {
+  if (ts.isJsxSelfClosingElement(element)) {
+    // Self-closing elements have no children
+    return undefined;
+  }
+
+  const textParts: string[] = [];
+
+  for (const child of element.children) {
+    if (ts.isJsxText(child)) {
+      const text = child.text.trim();
+      if (text) {
+        textParts.push(text);
+      }
+    } else if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child)) {
+      // Recursively get text from nested elements
+      const nestedText = getJsxTextContent(child);
+      if (nestedText) {
+        textParts.push(nestedText);
+      }
+    } else if (ts.isJsxExpression(child) && child.expression) {
+      // Handle simple string expressions like {"text"} or {`text`}
+      if (ts.isStringLiteral(child.expression)) {
+        textParts.push(child.expression.text);
+      } else if (ts.isNoSubstitutionTemplateLiteral(child.expression)) {
+        textParts.push(child.expression.text);
+      }
+    }
+  }
+
+  return textParts.length > 0 ? textParts.join(' ') : undefined;
+}

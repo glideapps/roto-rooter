@@ -197,7 +197,8 @@ export interface AnalyzerIssue {
     | 'loader'
     | 'params'
     | 'hydration'
-    | 'persistence';
+    | 'persistence'
+    | 'interactivity';
   /** Severity level */
   severity: 'error' | 'warning';
   /** Human-readable message */

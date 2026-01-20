@@ -16,6 +16,7 @@ import { checkLoaders } from './checks/loader-check.js';
 import { checkParams } from './checks/params-check.js';
 import { checkHydration } from './checks/hydration-check.js';
 import { checkPersistence } from './checks/persistence-check.js';
+import { checkInteractivity } from './checks/interactivity-check.js';
 import {
   discoverSchemaPath,
   parseDrizzleSchema,
@@ -96,7 +97,14 @@ export function analyze(options: CliOptions): AnalyzerResult {
 
   // Determine which checks to run
   // If --orm is specified and no explicit checks are given, include persistence
-  const defaultChecks = ['links', 'forms', 'loader', 'params', 'hydration'];
+  const defaultChecks = [
+    'links',
+    'forms',
+    'loader',
+    'params',
+    'hydration',
+    'interactivity',
+  ];
   if (options.orm === 'drizzle') {
     defaultChecks.push('persistence');
   }
@@ -125,6 +133,10 @@ export function analyze(options: CliOptions): AnalyzerResult {
 
   if (enabledChecks.has('persistence') && drizzleSchema) {
     issues.push(...checkPersistence(componentFiles, drizzleSchema));
+  }
+
+  if (enabledChecks.has('interactivity')) {
+    issues.push(...checkInteractivity(componentFiles));
   }
 
   // If specific files were provided, filter issues to only those files
