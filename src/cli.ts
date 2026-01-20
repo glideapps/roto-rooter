@@ -176,7 +176,7 @@ OPTIONS:
   -v, --version           Show version number
   -f, --format <format>   Output format: text (default) or json
   -c, --check <checks>    Comma-separated list of checks to run (default is all checks)
-                          Available: links, forms, loader, params, hydration, persistence
+                          Available: links, forms, loader, params, hydration, interactivity, persistence
   -r, --root <path>       Project root directory containing the app/ folder (default: cwd)
   --fix                   Automatically fix issues where possible
   --dry-run               Show what would be fixed without modifying files
