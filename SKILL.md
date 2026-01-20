@@ -46,6 +46,7 @@ rr --root ./my-app              # set project root
 - **loader** - detects loader data usage issues
 - **params** - validates route params match definitions
 - **hydration** - detects hydration mismatches (Date, Math.random, window access in render)
+- **interactivity** - detects disconnected dialogs (Save buttons that don't save, stub handlers)
 - **persistence** - validates database operations against Drizzle ORM schema (requires `--orm drizzle`)
 
 ## Examples

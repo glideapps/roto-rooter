@@ -56,6 +56,12 @@ rr --orm drizzle --drizzle-schema src/db/schema.ts
 
   Some hydration issues are auto-fixable (e.g., adding `{ timeZone: "UTC" }` to locale methods, replacing `uuid()` with `useId()`).
 
+- **interactivity**: Detects disconnected interactive elements:
+  - Dialog/modal forms where "Save" button only closes the dialog without persisting data
+  - "Delete" confirmation buttons that only close without performing the action
+  - Buttons with empty or stub onClick handlers (console.log only)
+  - Validates dialogs use React Router `<Form>` or `useFetcher.submit()` for data operations
+
 - **persistence**: Validates database operations against Drizzle ORM schema. Requires `--orm drizzle` flag. Auto-discovers schema from common locations (`db/schema.ts`, `src/db/schema.ts`, etc.) or use `--drizzle-schema` for custom paths.
   - Missing required columns on `db.insert()` calls
   - Type mismatches (e.g., string from `formData.get()` to integer column)

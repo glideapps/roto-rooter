@@ -20,5 +20,8 @@ export default [
     route('/user-update', 'routes/user-update.tsx'),
     route('/user-type-mismatch', 'routes/user-type-mismatch.tsx'),
     route('/user-correct-types', 'routes/user-correct-types.tsx'),
+    // Interactivity check fixtures
+    route('/disconnected-dialog', 'routes/disconnected-dialog.tsx'),
+    route('/connected-dialog', 'routes/connected-dialog.tsx'),
   ]),
 ] satisfies RouteConfig;
