@@ -42,8 +42,10 @@ export function parseComponent(filePath: string): ComponentAnalysis {
   const suppressWarningElements = new Set<ts.Node>();
   // Track server-side function bodies (loader, action) - code here doesn't cause hydration issues
   const serverFunctionBodies = new Set<ts.Node>();
+  // Track event handler function bodies - code here only runs on user interaction, not during render
+  const eventHandlerBodies = new Set<ts.Node>();
 
-  // First pass: find all elements with suppressHydrationWarning and server function bodies
+  // First pass: find all elements with suppressHydrationWarning, server function bodies, and event handlers
   walkAst(sourceFile, (node) => {
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
       if (hasSuppressHydrationWarning(node)) {
@@ -80,6 +82,37 @@ export function parseComponent(filePath: string): ComponentAnalysis {
         }
       }
     }
+
+    // Find event handler functions by naming convention (handleX, onX)
+    // These are functions defined inside components that only run on user interaction
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+      const name = node.name.text;
+      if (isEventHandlerName(name) && node.initializer) {
+        if (
+          ts.isArrowFunction(node.initializer) ||
+          ts.isFunctionExpression(node.initializer)
+        ) {
+          eventHandlerBodies.add(node.initializer.body);
+        }
+      }
+    }
+
+    // Find functions passed directly to JSX event props (onClick, onChange, etc.)
+    if (ts.isJsxAttribute(node) && ts.isIdentifier(node.name)) {
+      const attrName = node.name.text;
+      if (isEventPropName(attrName) && node.initializer) {
+        // Check if it's an inline arrow function: onClick={() => ...}
+        if (
+          ts.isJsxExpression(node.initializer) &&
+          node.initializer.expression
+        ) {
+          const expr = node.initializer.expression;
+          if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) {
+            eventHandlerBodies.add(expr.body);
+          }
+        }
+      }
+    }
   });
 
   walkAst(sourceFile, (node) => {
@@ -88,11 +121,12 @@ export function parseComponent(filePath: string): ComponentAnalysis {
       useEffectStack.push(node);
     }
 
-    // Skip hydration detection for code inside loader/action functions
+    // Skip hydration detection for code inside loader/action functions or event handlers
     const inServerFunction = isInsideServerFunction(node, serverFunctionBodies);
+    const inEventHandler = isInsideEventHandler(node, eventHandlerBodies);
 
-    // Detect hydration-risky patterns (only in client-side code)
-    if (!inServerFunction) {
+    // Detect hydration-risky patterns (only in render-time code)
+    if (!inServerFunction && !inEventHandler) {
       const hydrationRisk = detectHydrationRisk(
         node,
         sourceFile,
@@ -647,7 +681,7 @@ function extractUseParamsReference(
 }
 
 /**
- * Check if a URL is external or a hash link
+ * Check if a URL is external, a protocol URL, or a hash link
  */
 function isExternalOrHash(url: string): boolean {
   return (
@@ -655,6 +689,10 @@ function isExternalOrHash(url: string): boolean {
     url.startsWith('https://') ||
     url.startsWith('mailto:') ||
     url.startsWith('tel:') ||
+    url.startsWith('sms:') ||
+    url.startsWith('data:') ||
+    url.startsWith('blob:') ||
+    url.startsWith('javascript:') ||
     url.startsWith('#') ||
     url.startsWith('//')
   );
@@ -726,6 +764,58 @@ function isInsideServerFunction(
     current = current.parent;
   }
   return false;
+}
+
+/**
+ * Check if a node is inside an event handler function
+ * Code inside event handlers only runs on user interaction, not during render
+ */
+function isInsideEventHandler(
+  node: ts.Node,
+  eventHandlerBodies: Set<ts.Node>
+): boolean {
+  let current: ts.Node | undefined = node;
+  while (current) {
+    if (eventHandlerBodies.has(current)) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
+/**
+ * Check if a function name follows event handler naming conventions
+ * Common patterns: handleClick, handleSubmit, onClick, onSubmit, etc.
+ */
+function isEventHandlerName(name: string): boolean {
+  // handleX pattern (most common React convention)
+  if (name.startsWith('handle') && name.length > 6) {
+    return true;
+  }
+  // onX pattern (also common, especially for callbacks)
+  if (
+    name.startsWith('on') &&
+    name.length > 2 &&
+    name[2] === name[2].toUpperCase()
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Check if a JSX attribute name is an event handler prop
+ * These props receive functions that are called on user interaction, not during render
+ */
+function isEventPropName(name: string): boolean {
+  // Standard React event props start with "on" followed by uppercase letter
+  // Examples: onClick, onChange, onSubmit, onKeyDown, onMouseEnter, etc.
+  return (
+    name.startsWith('on') &&
+    name.length > 2 &&
+    name[2] === name[2].toUpperCase()
+  );
 }
 
 /**
