@@ -14,7 +14,7 @@ describe('route-parser', () => {
     it('should parse routes from app/routes.ts', () => {
       const routes = parseRoutes(fixturesDir);
 
-      expect(routes).toHaveLength(19);
+      expect(routes).toHaveLength(21);
       expect(routes.map((r) => r.path)).toEqual([
         '/',
         '/employees',
@@ -35,6 +35,8 @@ describe('route-parser', () => {
         '/user-correct-types',
         '/disconnected-dialog',
         '/connected-dialog',
+        '/event-handlers',
+        '/protocol-links',
       ]);
     });
 

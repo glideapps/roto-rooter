@@ -180,6 +180,34 @@ describe('hydration-check', () => {
       // No hydration risks should be detected since all Date ops are in server functions
       expect(component.hydrationRisks).toHaveLength(0);
     });
+
+    it('should not flag browser APIs in event handlers', () => {
+      const componentPath = path.join(
+        fixturesDir,
+        'app/routes/event-handlers.tsx'
+      );
+      const component = parseComponent(componentPath);
+      const issues = checkHydration([component]);
+
+      // Event handlers like handleCall, handleText, handleEmail, handleShare
+      // contain window.location and document.createElement but should not be flagged
+      // because they only run on user interaction, not during render
+      expect(issues).toHaveLength(0);
+    });
+
+    it('should not flag inline arrow functions in onClick handlers', () => {
+      const componentPath = path.join(
+        fixturesDir,
+        'app/routes/event-handlers.tsx'
+      );
+      const component = parseComponent(componentPath);
+      const issues = checkHydration([component]);
+
+      // Inline: onClick={() => { window.location.href = '/home'; }}
+      // Should not be flagged
+      const inlineIssues = issues.filter((i) => i.code?.includes('/home'));
+      expect(inlineIssues).toHaveLength(0);
+    });
   });
 
   describe('error deduplication', () => {

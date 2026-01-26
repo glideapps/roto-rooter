@@ -23,5 +23,9 @@ export default [
     // Interactivity check fixtures
     route('/disconnected-dialog', 'routes/disconnected-dialog.tsx'),
     route('/connected-dialog', 'routes/connected-dialog.tsx'),
+    // Event handler false positive test
+    route('/event-handlers', 'routes/event-handlers.tsx'),
+    // Protocol links test
+    route('/protocol-links', 'routes/protocol-links.tsx'),
   ]),
 ] satisfies RouteConfig;

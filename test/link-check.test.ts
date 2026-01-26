@@ -89,4 +89,19 @@ describe('link-check', () => {
     // All links in query-links.tsx should be valid (base paths exist)
     expect(issues).toHaveLength(0);
   });
+
+  it('should not flag protocol URLs (tel:, sms:, mailto:, etc.)', () => {
+    const routes = parseRoutes(fixturesDir);
+    const protocolLinksPath = path.join(
+      fixturesDir,
+      'app/routes/protocol-links.tsx'
+    );
+    const component = parseComponent(protocolLinksPath);
+
+    const issues = checkLinks([component], routes);
+
+    // Protocol URLs like tel:, sms:, mailto: should not be flagged
+    // They are external/system links, not app routes
+    expect(issues).toHaveLength(0);
+  });
 });
