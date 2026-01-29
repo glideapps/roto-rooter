@@ -3,6 +3,7 @@ import * as path from 'path';
 import { parseRoutes } from '../src/parsers/route-parser.js';
 import { parseComponent } from '../src/parsers/component-parser.js';
 import { checkForms } from '../src/checks/form-check.js';
+import { parseRouteExports } from '../src/parsers/action-parser.js';
 
 const fixturesDir = path.join(__dirname, 'fixtures/sample-app');
 
@@ -152,6 +153,40 @@ describe('form-check', () => {
       expect(createForm).toBeDefined();
       expect(deleteForm).toBeDefined();
       expect(completeForm).toBeDefined();
+    });
+
+    it('should not flag forms when fields are read at top level but only used in specific intents', () => {
+      const routes = parseRoutes(fixturesDir);
+      const intentTopLevelPath = path.join(
+        fixturesDir,
+        'app/routes/intent-toplevel.tsx'
+      );
+      const component = parseComponent(intentTopLevelPath);
+
+      const issues = checkForms([component], routes, fixturesDir);
+
+      // Should have no errors - delete and archive forms should not be flagged
+      // for missing firstName, lastName, email
+      const errors = issues.filter((i) => i.severity === 'error');
+      expect(errors).toHaveLength(0);
+    });
+
+    it('should track all intent values even when no fields are read inside the block', () => {
+      const intentTopLevelPath = path.join(
+        fixturesDir,
+        'app/routes/intent-toplevel.tsx'
+      );
+      const exports = parseRouteExports(intentTopLevelPath);
+
+      // Should have intent groups for all three intents
+      expect(exports.intentFieldGroups).toBeDefined();
+      expect(exports.intentFieldGroups!.has('edit')).toBe(true);
+      expect(exports.intentFieldGroups!.has('delete')).toBe(true);
+      expect(exports.intentFieldGroups!.has('archive')).toBe(true);
+
+      // delete and archive should have empty arrays (no fields read inside)
+      expect(exports.intentFieldGroups!.get('delete')).toEqual([]);
+      expect(exports.intentFieldGroups!.get('archive')).toEqual([]);
     });
   });
 });

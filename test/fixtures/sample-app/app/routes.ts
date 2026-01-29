@@ -27,5 +27,7 @@ export default [
     route('/event-handlers', 'routes/event-handlers.tsx'),
     // Protocol links test
     route('/protocol-links', 'routes/protocol-links.tsx'),
+    // Intent dispatch with top-level field reads
+    route('/intent-toplevel', 'routes/intent-toplevel.tsx'),
   ]),
 ] satisfies RouteConfig;
