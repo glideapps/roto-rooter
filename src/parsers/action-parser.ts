@@ -113,6 +113,7 @@ function extractFormDataFieldsWithIntents(
   const intentGroups = new Map<string, Set<string>>();
   const formDataVariables: Set<string> = new Set();
   const intentVariables: Set<string> = new Set();
+  const knownIntents: Set<string> = new Set();
 
   // First pass: find variables that hold formData and intent
   walkAst(actionNode, (node) => {
@@ -128,7 +129,20 @@ function extractFormDataFieldsWithIntents(
     }
   });
 
-  // Second pass: find .get(), .getAll(), .has() calls and track intent context
+  // Second pass: collect all intent check values (even without formData access inside)
+  walkAst(actionNode, (node) => {
+    if (ts.isIfStatement(node)) {
+      const intentValue = extractIntentCheckValue(
+        node.expression,
+        intentVariables
+      );
+      if (intentValue) {
+        knownIntents.add(intentValue);
+      }
+    }
+  });
+
+  // Third pass: find .get(), .getAll(), .has() calls and track intent context
   walkAst(actionNode, (node) => {
     if (ts.isCallExpression(node)) {
       const expr = node.expression;
@@ -161,14 +175,16 @@ function extractFormDataFieldsWithIntents(
     }
   });
 
-  // Convert sets to arrays
+  // Convert sets to arrays - include ALL known intents
   const result: FieldExtractionResult = {
     allFields: Array.from(allFields),
     intentGroups: new Map(),
   };
 
-  for (const [intent, fields] of intentGroups) {
-    result.intentGroups.set(intent, Array.from(fields));
+  // Include all known intents, even if they have no fields inside
+  for (const intent of knownIntents) {
+    const fields = intentGroups.get(intent);
+    result.intentGroups.set(intent, fields ? Array.from(fields) : []);
   }
 
   return result;
