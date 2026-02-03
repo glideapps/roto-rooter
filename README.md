@@ -20,6 +20,9 @@ rr app/routes/employees.tsx
 # Run specific checks only
 rr --check links,forms
 
+# Run all checks (including optional ones)
+rr --check all
+
 # Output as JSON
 rr --format json
 

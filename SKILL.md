@@ -35,6 +35,7 @@ Example output:
 ```bash
 rr [FILES...]                   # analyze files (default: all routes)
 rr --check links,forms          # run specific checks
+rr --check all                  # run all checks (including optional)
 rr --format json                # JSON output
 rr --root ./my-app              # set project root
 ```
