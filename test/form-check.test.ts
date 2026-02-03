@@ -50,22 +50,6 @@ describe('form-check', () => {
       expect(missingFieldError?.suggestion).toContain('subject');
     });
 
-    it('should warn when form provides a field the action never reads', () => {
-      const routes = parseRoutes(fixturesDir);
-      const contactPath = path.join(fixturesDir, 'app/routes/contact.tsx');
-      const component = parseComponent(contactPath);
-
-      const issues = checkForms([component], routes, fixturesDir);
-
-      const unusedFieldWarning = issues.find(
-        (i) =>
-          i.severity === 'warning' &&
-          i.message.includes("'name'") &&
-          i.message.includes('never read')
-      );
-      expect(unusedFieldWarning).toBeDefined();
-    });
-
     it('should not flag forms where all fields match', () => {
       const routes = parseRoutes(fixturesDir);
       const feedbackPath = path.join(fixturesDir, 'app/routes/feedback.tsx');

@@ -199,25 +199,5 @@ function validateFormFields(
     }
   }
 
-  // Check for form fields the action never reads (warning - might be intentional)
-  // Only do this if we're checking all fields (not intent-specific)
-  if (!form.intentValue || !exports.intentFieldGroups?.has(form.intentValue)) {
-    for (const formField of formFields) {
-      if (!actionFields.has(formField)) {
-        const formCode = form.action
-          ? `<Form action="${form.action}">`
-          : '<Form>';
-        issues.push({
-          category: 'forms',
-          severity: 'warning',
-          message: `Form field '${formField}' is never read by the action`,
-          location: form.location,
-          code: formCode,
-          suggestion: `Remove unused input or add formData.get('${formField}') to the action`,
-        });
-      }
-    }
-  }
-
   return issues;
 }
