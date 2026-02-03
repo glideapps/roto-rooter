@@ -146,7 +146,7 @@ describe('persistence-check', () => {
       );
       expect(missingEmailIssue).toBeDefined();
       expect(missingEmailIssue!.severity).toBe('error');
-      expect(missingEmailIssue!.category).toBe('persistence');
+      expect(missingEmailIssue!.category).toBe('drizzle');
     });
   });
 

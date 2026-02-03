@@ -111,7 +111,7 @@ function checkMissingRequiredColumns(
   for (const requiredCol of requiredColumns) {
     if (!providedColumns.has(requiredCol.name)) {
       issues.push({
-        category: 'persistence',
+        category: 'drizzle',
         severity: 'error',
         message: `db.insert(${operation.tableName}) missing required column '${requiredCol.name}'`,
         location: operation.location,
@@ -163,7 +163,7 @@ function checkEnumValidation(
       enumDef?.values.map((v) => `'${v}'`).join(', ') || 'enum values';
 
     return {
-      category: 'persistence',
+      category: 'drizzle',
       severity: 'error',
       message: `Enum column '${column.name}' receives unvalidated external input`,
       location: operation.location,
@@ -200,7 +200,7 @@ function checkTypeMismatch(
     // formData.get() returns string, but column expects number
     if (source.source === 'formData' || source.source === 'params') {
       return {
-        category: 'persistence',
+        category: 'drizzle',
         severity: 'error',
         message: `Column '${column.name}' expects ${column.type} but receives string from ${source.source}.get()`,
         location: operation.location,
@@ -214,7 +214,7 @@ function checkTypeMismatch(
   if (column.type === 'boolean' && source.type === 'string') {
     if (source.source === 'formData' || source.source === 'params') {
       return {
-        category: 'persistence',
+        category: 'drizzle',
         severity: 'error',
         message: `Column '${column.name}' expects boolean but receives string from ${source.source}.get()`,
         location: operation.location,

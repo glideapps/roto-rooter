@@ -52,7 +52,7 @@ rr --root ./my-app              # set project root
 
 - **forms** - validates Form action targets and method/action mismatches
 - **hydration** - detects hydration mismatches (Date, Math.random, window access in render)
-- **persistence** - validates database operations against Drizzle ORM schema (auto-enabled with `--orm drizzle`)
+- **drizzle** - validates database operations against Drizzle ORM schema
 
 ## Examples
 
@@ -67,8 +67,8 @@ rr --fix
 rr --format json
 
 # Enable Drizzle ORM persistence checking (auto-discovers schema)
-rr --orm drizzle
+rr --check drizzle
 
 # Drizzle checking with explicit schema path
-rr --orm drizzle --drizzle-schema src/db/schema.ts
+rr --check drizzle --drizzle-schema src/db/schema.ts
 ```

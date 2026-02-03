@@ -197,7 +197,7 @@ export interface AnalyzerIssue {
     | 'loader'
     | 'params'
     | 'hydration'
-    | 'persistence'
+    | 'drizzle'
     | 'interactivity';
   /** Severity level */
   severity: 'error' | 'warning';
@@ -257,9 +257,7 @@ export interface CliOptions {
   fix?: boolean;
   /** Show what would be fixed without modifying files */
   dryRun?: boolean;
-  /** ORM type for persistence checking */
-  orm?: 'drizzle';
-  /** Explicit path to Drizzle schema file */
+  /** Explicit path to Drizzle schema file (enables drizzle check) */
   drizzleSchemaPath?: string;
 }
 

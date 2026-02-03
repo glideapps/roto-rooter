@@ -6,7 +6,6 @@ import type {
   ComponentAnalysis,
   RouteDefinition,
   CliOptions,
-  DrizzleSchema,
 } from './types.js';
 import { parseRoutes } from './parsers/route-parser.js';
 import { parseComponent } from './parsers/component-parser.js';
@@ -26,7 +25,7 @@ import {
 export const DEFAULT_CHECKS = ['links', 'loader', 'params', 'interactivity'];
 
 // Checks that are available but disabled by default (opt-in)
-export const OPTIONAL_CHECKS = ['forms', 'hydration', 'persistence'];
+export const OPTIONAL_CHECKS = ['forms', 'hydration', 'drizzle'];
 
 // All available checks
 export const ALL_CHECKS = [...DEFAULT_CHECKS, ...OPTIONAL_CHECKS];
@@ -79,39 +78,12 @@ export function analyze(options: CliOptions): AnalyzerResult {
     }
   }
 
-  // Parse Drizzle schema if ORM is enabled
-  let drizzleSchema: DrizzleSchema | undefined;
-  if (options.orm === 'drizzle') {
-    const schemaPath = options.drizzleSchemaPath || discoverSchemaPath(root);
-    if (schemaPath) {
-      try {
-        drizzleSchema = parseDrizzleSchema(schemaPath);
-      } catch (error) {
-        // Schema file not found or couldn't be parsed
-        console.error(
-          `Warning: Could not parse Drizzle schema at ${schemaPath}:`,
-          error
-        );
-      }
-    } else {
-      console.error(
-        'Warning: --orm drizzle specified but no schema file found. ' +
-          'Use --drizzle-schema to specify the path.'
-      );
-    }
-  }
-
   // Run checks
   const issues: AnalyzerIssue[] = [];
 
   // Determine which checks to run
   // If explicit checks specified, use those; otherwise use defaults
-  // When --orm drizzle is specified, include persistence in defaults
-  const defaultChecks = [...DEFAULT_CHECKS];
-  if (options.orm === 'drizzle') {
-    defaultChecks.push('persistence');
-  }
-  const enabledChecks = new Set(checks.length > 0 ? checks : defaultChecks);
+  const enabledChecks = new Set(checks.length > 0 ? checks : DEFAULT_CHECKS);
 
   if (enabledChecks.has('links')) {
     issues.push(...checkLinks(components, routes));
@@ -133,8 +105,24 @@ export function analyze(options: CliOptions): AnalyzerResult {
     issues.push(...checkHydration(components));
   }
 
-  if (enabledChecks.has('persistence') && drizzleSchema) {
-    issues.push(...checkPersistence(componentFiles, drizzleSchema));
+  if (enabledChecks.has('drizzle')) {
+    const schemaPath = options.drizzleSchemaPath || discoverSchemaPath(root);
+    if (schemaPath) {
+      try {
+        const drizzleSchema = parseDrizzleSchema(schemaPath);
+        issues.push(...checkPersistence(componentFiles, drizzleSchema));
+      } catch (error) {
+        console.error(
+          `Warning: Could not parse Drizzle schema at ${schemaPath}:`,
+          error
+        );
+      }
+    } else {
+      console.error(
+        'Warning: drizzle check enabled but no schema file found. ' +
+          'Use --drizzle-schema to specify the path.'
+      );
+    }
   }
 
   if (enabledChecks.has('interactivity')) {
