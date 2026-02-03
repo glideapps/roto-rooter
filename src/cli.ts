@@ -175,8 +175,9 @@ OPTIONS:
   -h, --help              Show this help message
   -v, --version           Show version number
   -f, --format <format>   Output format: text (default) or json
-  -c, --check <checks>    Comma-separated list of checks to run (default is all checks)
-                          Available: links, forms, loader, params, hydration, interactivity, persistence
+  -c, --check <checks>    Comma-separated list of checks to run
+                          Default: links, loader, params, interactivity
+                          Optional: forms, hydration, persistence
   -r, --root <path>       Project root directory containing the app/ folder (default: cwd)
   --fix                   Automatically fix issues where possible
   --dry-run               Show what would be fixed without modifying files
@@ -184,7 +185,7 @@ OPTIONS:
   --drizzle-schema <path> Explicit path to Drizzle schema file (auto-discovered by default)
 
 EXAMPLES:
-  # Check all files in current directory
+  # Check all files in current directory (runs default checks)
   rr
 
   # Check specific file(s)
@@ -192,6 +193,9 @@ EXAMPLES:
 
   # Run only link and form checks
   rr --check links,forms
+
+  # Run default checks plus hydration
+  rr --check links,loader,params,interactivity,hydration
 
   # Output as JSON
   rr --format json

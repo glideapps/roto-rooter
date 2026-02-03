@@ -41,13 +41,18 @@ rr --root ./my-app              # set project root
 
 ## Available checks
 
+**Default checks** (run automatically):
+
 - **links** - validates Link/NavLink href targets exist as routes
-- **forms** - validates Form action targets and method/action mismatches
 - **loader** - detects loader data usage issues
 - **params** - validates route params match definitions
-- **hydration** - detects hydration mismatches (Date, Math.random, window access in render)
 - **interactivity** - detects disconnected dialogs (Save buttons that don't save, stub handlers)
-- **persistence** - validates database operations against Drizzle ORM schema (requires `--orm drizzle`)
+
+**Optional checks** (opt-in via `--check`):
+
+- **forms** - validates Form action targets and method/action mismatches
+- **hydration** - detects hydration mismatches (Date, Math.random, window access in render)
+- **persistence** - validates database operations against Drizzle ORM schema (auto-enabled with `--orm drizzle`)
 
 ## Examples
 

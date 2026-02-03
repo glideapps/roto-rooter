@@ -22,6 +22,15 @@ import {
   parseDrizzleSchema,
 } from './parsers/drizzle-schema-parser.js';
 
+// Checks that run by default when no --check is specified
+export const DEFAULT_CHECKS = ['links', 'loader', 'params', 'interactivity'];
+
+// Checks that are available but disabled by default (opt-in)
+export const OPTIONAL_CHECKS = ['forms', 'hydration', 'persistence'];
+
+// All available checks
+export const ALL_CHECKS = [...DEFAULT_CHECKS, ...OPTIONAL_CHECKS];
+
 /**
  * Main analyzer - orchestrates parsing and checking
  */
@@ -96,19 +105,12 @@ export function analyze(options: CliOptions): AnalyzerResult {
   const issues: AnalyzerIssue[] = [];
 
   // Determine which checks to run
-  // If --orm is specified and no explicit checks are given, include persistence
-  const defaultChecks = [
-    'links',
-    'forms',
-    'loader',
-    'params',
-    'hydration',
-    'interactivity',
-  ];
+  // If explicit checks specified, use those; otherwise use defaults
+  // When --orm drizzle is specified, include persistence in defaults
+  const defaultChecks = [...DEFAULT_CHECKS];
   if (options.orm === 'drizzle') {
     defaultChecks.push('persistence');
   }
-
   const enabledChecks = new Set(checks.length > 0 ? checks : defaultChecks);
 
   if (enabledChecks.has('links')) {
