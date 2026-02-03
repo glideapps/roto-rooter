@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { analyze } from './analyzer.js';
+import { analyze, ALL_CHECKS } from './analyzer.js';
 import { applyFixes } from './fixer.js';
 import type { CliOptions, FixResult } from './types.js';
 import { formatIssues } from './utils/format-issue.js';
@@ -120,7 +120,11 @@ function parseArgs(args: string[]): ParsedArgs {
     if (arg === '--check' || arg === '-c') {
       const value = args[i + 1];
       if (value) {
-        options.checks = value.split(',').map((c) => c.trim());
+        if (value === 'all') {
+          options.checks = [...ALL_CHECKS];
+        } else {
+          options.checks = value.split(',').map((c) => c.trim());
+        }
       }
       i += 2;
       continue;
@@ -130,15 +134,6 @@ function parseArgs(args: string[]): ParsedArgs {
       const value = args[i + 1];
       if (value) {
         options.root = path.resolve(value);
-      }
-      i += 2;
-      continue;
-    }
-
-    if (arg === '--orm') {
-      const value = args[i + 1];
-      if (value === 'drizzle') {
-        options.orm = value;
       }
       i += 2;
       continue;
@@ -175,16 +170,16 @@ OPTIONS:
   -h, --help              Show this help message
   -v, --version           Show version number
   -f, --format <format>   Output format: text (default) or json
-  -c, --check <checks>    Comma-separated list of checks to run (default is all checks)
-                          Available: links, forms, loader, params, hydration, interactivity, persistence
+  -c, --check <checks>    Comma-separated list of checks to run, or "all"
+                          Default: links, loader, params, interactivity
+                          Optional: forms, hydration, drizzle
   -r, --root <path>       Project root directory containing the app/ folder (default: cwd)
   --fix                   Automatically fix issues where possible
   --dry-run               Show what would be fixed without modifying files
-  --orm <type>            Enable ORM-aware checking (available: drizzle)
-  --drizzle-schema <path> Explicit path to Drizzle schema file (auto-discovered by default)
+  --drizzle-schema <path> Path to Drizzle schema file (for drizzle check, auto-discovered by default)
 
 EXAMPLES:
-  # Check all files in current directory
+  # Check all files in current directory (runs default checks)
   rr
 
   # Check specific file(s)
@@ -192,6 +187,9 @@ EXAMPLES:
 
   # Run only link and form checks
   rr --check links,forms
+
+  # Run all checks (including optional ones)
+  rr --check all
 
   # Output as JSON
   rr --format json
@@ -208,11 +206,11 @@ EXAMPLES:
   # Analyze files in a different project directory
   rr --root ./my-app ./my-app/app/routes/dashboard.tsx
 
-  # Enable Drizzle ORM persistence checking
-  rr --orm drizzle
+  # Run the Drizzle ORM check (auto-discovers schema)
+  rr --check drizzle
 
-  # Drizzle checking with explicit schema path
-  rr --orm drizzle --drizzle-schema src/db/schema.ts
+  # Drizzle check with explicit schema path
+  rr --check drizzle --drizzle-schema src/db/schema.ts
 `);
 }
 

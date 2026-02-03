@@ -35,19 +35,25 @@ Example output:
 ```bash
 rr [FILES...]                   # analyze files (default: all routes)
 rr --check links,forms          # run specific checks
+rr --check all                  # run all checks (including optional)
 rr --format json                # JSON output
 rr --root ./my-app              # set project root
 ```
 
 ## Available checks
 
+**Default checks** (run automatically):
+
 - **links** - validates Link/NavLink href targets exist as routes
-- **forms** - validates Form action targets and method/action mismatches
 - **loader** - detects loader data usage issues
 - **params** - validates route params match definitions
-- **hydration** - detects hydration mismatches (Date, Math.random, window access in render)
 - **interactivity** - detects disconnected dialogs (Save buttons that don't save, stub handlers)
-- **persistence** - validates database operations against Drizzle ORM schema (requires `--orm drizzle`)
+
+**Optional checks** (opt-in via `--check`):
+
+- **forms** - validates Form action targets and method/action mismatches
+- **hydration** - detects hydration mismatches (Date, Math.random, window access in render)
+- **drizzle** - validates database operations against Drizzle ORM schema
 
 ## Examples
 
@@ -62,8 +68,8 @@ rr --fix
 rr --format json
 
 # Enable Drizzle ORM persistence checking (auto-discovers schema)
-rr --orm drizzle
+rr --check drizzle
 
 # Drizzle checking with explicit schema path
-rr --orm drizzle --drizzle-schema src/db/schema.ts
+rr --check drizzle --drizzle-schema src/db/schema.ts
 ```

@@ -7,7 +7,7 @@ Static analysis and functional verifier tool for React Router applications. CLI 
 - `src/cli.ts` - CLI entry point
 - `src/analyzer.ts` - Main analysis orchestration
 - `src/parsers/` - AST parsers for routes, components, and actions
-- `src/checks/` - Individual check implementations (links, forms, loader, params, hydration, interactivity, persistence)
+- `src/checks/` - Individual check implementations (links, forms, loader, params, hydration, interactivity, drizzle/persistence)
 - `src/types.ts` - Type definitions
 - `scripts/build.mjs` - esbuild bundler (bundles CLI + dependencies into single file)
 - `test/cli.test.ts` - CLI integration tests (runs built artifact)

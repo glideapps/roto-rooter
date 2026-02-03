@@ -20,6 +20,9 @@ rr app/routes/employees.tsx
 # Run specific checks only
 rr --check links,forms
 
+# Run all checks (including optional ones)
+rr --check all
+
 # Output as JSON
 rr --format json
 
@@ -36,18 +39,28 @@ rr --dry-run
 rr --fix app/routes/dashboard.tsx
 
 # Enable Drizzle ORM persistence checking (auto-discovers schema)
-rr --orm drizzle
+rr --check drizzle
 
 # Drizzle checking with explicit schema path
-rr --orm drizzle --drizzle-schema src/db/schema.ts
+rr --check drizzle --drizzle-schema src/db/schema.ts
 ```
 
 ## Checks
 
+**Default checks** (run automatically):
+
 - **links**: Validates `<Link>`, `redirect()`, and `navigate()` targets exist as defined routes. Suggests closest matching route when a typo is detected. Auto-fixable when a close match exists.
-- **forms**: Validates `<Form>` components submit to routes with action exports, and that form fields match what the action reads via `formData.get()`. Supports intent-based dispatch patterns. Auto-fixable when targeting a mistyped route.
 - **loader**: Validates `useLoaderData()` is only used in routes that export a loader function.
 - **params**: Validates `useParams()` accesses only params defined in the route path (e.g., `:id` in `/users/:id`).
+- **interactivity**: Detects disconnected interactive elements:
+  - Dialog/modal forms where "Save" button only closes the dialog without persisting data
+  - "Delete" confirmation buttons that only close without performing the action
+  - Buttons with empty or stub onClick handlers (console.log only)
+  - Validates dialogs use React Router `<Form>` or `useFetcher.submit()` for data operations
+
+**Optional checks** (opt-in via `--check`):
+
+- **forms**: Validates `<Form>` components submit to routes with action exports, and that form fields match what the action reads via `formData.get()`. Supports intent-based dispatch patterns. Auto-fixable when targeting a mistyped route.
 - **hydration**: Detects SSR hydration mismatch risks:
   - Date/time operations without consistent timezone handling
   - Locale-dependent formatting (e.g., `toLocaleString()`) without explicit `timeZone` option
@@ -56,13 +69,7 @@ rr --orm drizzle --drizzle-schema src/db/schema.ts
 
   Some hydration issues are auto-fixable (e.g., adding `{ timeZone: "UTC" }` to locale methods, replacing `uuid()` with `useId()`).
 
-- **interactivity**: Detects disconnected interactive elements:
-  - Dialog/modal forms where "Save" button only closes the dialog without persisting data
-  - "Delete" confirmation buttons that only close without performing the action
-  - Buttons with empty or stub onClick handlers (console.log only)
-  - Validates dialogs use React Router `<Form>` or `useFetcher.submit()` for data operations
-
-- **persistence**: Validates database operations against Drizzle ORM schema. Requires `--orm drizzle` flag. Auto-discovers schema from common locations (`db/schema.ts`, `src/db/schema.ts`, etc.) or use `--drizzle-schema` for custom paths.
+- **drizzle** (persistence): Validates database operations against Drizzle ORM schema. Auto-discovers schema from common locations (`db/schema.ts`, `src/db/schema.ts`, etc.) or use `--drizzle-schema` for custom paths.
   - Missing required columns on `db.insert()` calls
   - Type mismatches (e.g., string from `formData.get()` to integer column)
   - Enum columns receiving unvalidated external input
