@@ -1,11 +1,12 @@
 {
   "name": "roto-rooter",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Static analysis and functional verifier tool for React Router applications",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "rr": "./dist/cli.js"
+    "rr": "./dist/cli.js",
+    "roto-rooter": "./dist/cli.js"
   },
   "files": [
     "dist"
