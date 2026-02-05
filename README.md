@@ -79,8 +79,13 @@ rr sql --drizzle --format json
   Some hydration issues are auto-fixable (e.g., adding `{ timeZone: "UTC" }` to locale methods, replacing `uuid()` with `useId()`).
 
 - **drizzle** (persistence): Validates database operations against Drizzle ORM schema. Auto-discovers schema from common locations (`db/schema.ts`, `src/db/schema.ts`, etc.) or use `--drizzle-schema` for custom paths.
+  - Unknown table or column references in `db.insert()`, `db.update()`, `db.delete()`
   - Missing required columns on `db.insert()` calls
-  - Type mismatches (e.g., string from `formData.get()` to integer column)
+  - Null literal assigned to `notNull` column (insert or update)
+  - Invalid enum literal values (checked against schema-defined allowed values)
+  - Type mismatches: string from `formData.get()` to integer, boolean, timestamp, or json column
+  - Writing to auto-generated columns (e.g., serial, auto-increment) on insert
+  - `DELETE` or `UPDATE` without `.where()` clause (affects all rows)
   - Enum columns receiving unvalidated external input
 
 ## SQL Query Extraction
