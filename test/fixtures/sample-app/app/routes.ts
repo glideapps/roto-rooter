@@ -31,6 +31,7 @@ export default [
     route('/delete-no-where', 'routes/delete-no-where.tsx'),
     route('/update-no-where', 'routes/update-no-where.tsx'),
     route('/delete-with-where', 'routes/delete-with-where.tsx'),
+    route('/import-alias', 'routes/import-alias.tsx'),
     // Interactivity check fixtures
     route('/disconnected-dialog', 'routes/disconnected-dialog.tsx'),
     route('/connected-dialog', 'routes/connected-dialog.tsx'),

@@ -170,6 +170,16 @@ describe('action-parser db operations', () => {
     expect(operations[0].type).toBe('delete');
     expect(operations[0].hasWhere).toBe(false);
   });
+
+  it('should resolve import aliases to original export names', () => {
+    const filePath = path.join(fixturesDir, 'app/routes/import-alias.tsx');
+    const { operations } = extractDbOperations(filePath);
+
+    expect(operations).toHaveLength(1);
+    expect(operations[0].type).toBe('insert');
+    // Should resolve 'usersTable' alias back to 'users'
+    expect(operations[0].tableName).toBe('users');
+  });
 });
 
 describe('persistence-check', () => {
@@ -304,6 +314,18 @@ describe('persistence-check', () => {
     it('should not flag known tables', () => {
       const schema = parseDrizzleSchema(schemaPath);
       const filePath = path.join(fixturesDir, 'app/routes/user-create.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const tableIssues = issues.filter((i) =>
+        i.message.includes('not found in Drizzle schema')
+      );
+      expect(tableIssues).toHaveLength(0);
+    });
+
+    it('should not flag aliased imports of known tables', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/import-alias.tsx');
 
       const issues = checkPersistence([filePath], schema);
 
