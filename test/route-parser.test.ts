@@ -14,7 +14,6 @@ describe('route-parser', () => {
     it('should parse routes from app/routes.ts', () => {
       const routes = parseRoutes(fixturesDir);
 
-      expect(routes).toHaveLength(34);
       expect(routes.map((r) => r.path)).toEqual([
         '/',
         '/employees',
@@ -44,6 +43,7 @@ describe('route-parser', () => {
         '/delete-no-where',
         '/update-no-where',
         '/delete-with-where',
+        '/import-alias',
         '/disconnected-dialog',
         '/connected-dialog',
         '/event-handlers',

@@ -42,6 +42,24 @@ export function extractDbOperations(
   // Track validated variables (via zod parse, safeParse, etc.)
   const validatedVariables = new Set<string>();
 
+  // Build import alias map: local name -> original export name
+  // e.g., import { slips as slipsTable } -> "slipsTable" -> "slips"
+  const importAliases = new Map<string, string>();
+  walkAst(sourceFile, (node) => {
+    if (
+      ts.isImportDeclaration(node) &&
+      node.importClause?.namedBindings &&
+      ts.isNamedImports(node.importClause.namedBindings)
+    ) {
+      for (const element of node.importClause.namedBindings.elements) {
+        if (element.propertyName) {
+          // { original as alias } -> map alias to original
+          importAliases.set(element.name.text, element.propertyName.text);
+        }
+      }
+    }
+  });
+
   // First pass: collect formData variables and track data sources
   walkAst(sourceFile, (node) => {
     // Track formData variable assignments
@@ -95,7 +113,8 @@ export function extractDbOperations(
         filePath,
         variableSources,
         formDataVariables,
-        validatedVariables
+        validatedVariables,
+        importAliases
       );
       if (operation) {
         operations.push(operation);
@@ -371,7 +390,8 @@ function parseDbOperation(
   filePath: string,
   variableSources: Map<string, DataSource>,
   formDataVariables: Set<string>,
-  validatedVariables: Set<string>
+  validatedVariables: Set<string>,
+  importAliases: Map<string, string>
 ): DbOperation | undefined {
   // Look for patterns like:
   // db.insert(users).values({...})
@@ -384,7 +404,10 @@ function parseDbOperation(
     return undefined;
   }
 
-  const { type, tableName, valuesCall, hasWhere } = chainInfo;
+  const { type, valuesCall, hasWhere } = chainInfo;
+  // Resolve import aliases: e.g., slipsTable -> slips
+  const tableName =
+    importAliases.get(chainInfo.tableName) || chainInfo.tableName;
   const loc = getLineAndColumn(sourceFile, call.getStart(sourceFile));
 
   const operation: DbOperation = {
