@@ -14,7 +14,7 @@ describe('route-parser', () => {
     it('should parse routes from app/routes.ts', () => {
       const routes = parseRoutes(fixturesDir);
 
-      expect(routes).toHaveLength(22);
+      expect(routes).toHaveLength(23);
       expect(routes.map((r) => r.path)).toEqual([
         '/',
         '/employees',
@@ -38,6 +38,7 @@ describe('route-parser', () => {
         '/event-handlers',
         '/protocol-links',
         '/intent-toplevel',
+        '/sql-operations/:id?',
       ]);
     });
 

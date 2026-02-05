@@ -43,6 +43,15 @@ rr --check drizzle
 
 # Drizzle checking with explicit schema path
 rr --check drizzle --drizzle-schema src/db/schema.ts
+
+# Extract SQL queries from Drizzle ORM code
+rr sql --drizzle
+
+# Extract queries from a specific file
+rr sql --drizzle app/routes/users.tsx
+
+# SQL output as JSON
+rr sql --drizzle --format json
 ```
 
 ## Checks
@@ -73,6 +82,19 @@ rr --check drizzle --drizzle-schema src/db/schema.ts
   - Missing required columns on `db.insert()` calls
   - Type mismatches (e.g., string from `formData.get()` to integer column)
   - Enum columns receiving unvalidated external input
+
+## SQL Query Extraction
+
+The `rr sql` command extracts database queries from ORM code and generates equivalent SQL statements.
+
+```bash
+rr sql --drizzle                          # extract all SQL queries
+rr sql --drizzle app/routes/users.tsx     # extract from specific file
+rr sql --drizzle --format json            # JSON output
+rr sql --drizzle --drizzle-schema db/schema.ts  # explicit schema path
+```
+
+Supports SELECT, INSERT, UPDATE, and DELETE patterns with parameterized queries and column type inference from the schema.
 
 ## Programmatic API
 

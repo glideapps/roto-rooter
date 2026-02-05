@@ -38,6 +38,8 @@ rr --check links,forms          # run specific checks
 rr --check all                  # run all checks (including optional)
 rr --format json                # JSON output
 rr --root ./my-app              # set project root
+rr sql --drizzle                # extract SQL queries from Drizzle ORM code
+rr sql --drizzle --format json  # SQL extraction with JSON output
 ```
 
 ## Available checks
@@ -72,4 +74,13 @@ rr --check drizzle
 
 # Drizzle checking with explicit schema path
 rr --check drizzle --drizzle-schema src/db/schema.ts
+
+# Extract SQL queries from Drizzle ORM code
+rr sql --drizzle
+
+# Extract SQL queries from a specific file
+rr sql --drizzle app/routes/users.tsx
+
+# SQL extraction with JSON output
+rr sql --drizzle --format json
 ```
