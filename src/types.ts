@@ -386,6 +386,8 @@ export interface DbOperation {
   tableName: string;
   /** Column values for insert/update */
   columnValues: DbColumnValue[];
+  /** Whether the operation has a .where() clause */
+  hasWhere: boolean;
   /** Source location */
   location: SourceLocation;
   /** Span of the entire operation */

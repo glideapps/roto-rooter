@@ -11,7 +11,7 @@ describe('drizzle-schema-parser', () => {
   it('should parse table definitions', () => {
     const schema = parseDrizzleSchema(schemaPath);
 
-    expect(schema.tables).toHaveLength(2);
+    expect(schema.tables).toHaveLength(3);
 
     const usersTable = schema.tables.find((t) => t.name === 'users');
     expect(usersTable).toBeDefined();
@@ -75,6 +75,27 @@ describe('drizzle-schema-parser', () => {
     expect(statusColumn!.type).toBe('enum');
     expect(statusColumn!.enumName).toBe('statusEnum');
   });
+
+  it('should parse events table with date and jsonb columns', () => {
+    const schema = parseDrizzleSchema(schemaPath);
+
+    const eventsTable = schema.tables.find((t) => t.name === 'events');
+    expect(eventsTable).toBeDefined();
+
+    const startDate = eventsTable!.columns.find((c) => c.name === 'startDate');
+    expect(startDate).toBeDefined();
+    expect(startDate!.type).toBe('date');
+
+    const scheduledAt = eventsTable!.columns.find(
+      (c) => c.name === 'scheduledAt'
+    );
+    expect(scheduledAt).toBeDefined();
+    expect(scheduledAt!.type).toBe('timestamp');
+
+    const metadata = eventsTable!.columns.find((c) => c.name === 'metadata');
+    expect(metadata).toBeDefined();
+    expect(metadata!.type).toBe('jsonb');
+  });
 });
 
 describe('action-parser db operations', () => {
@@ -130,6 +151,24 @@ describe('action-parser db operations', () => {
     for (const col of operations[0].columnValues) {
       expect(col.dataSource.isValidated).toBe(true);
     }
+  });
+
+  it('should detect hasWhere on delete with where', () => {
+    const filePath = path.join(fixturesDir, 'app/routes/delete-with-where.tsx');
+    const { operations } = extractDbOperations(filePath);
+
+    expect(operations).toHaveLength(1);
+    expect(operations[0].type).toBe('delete');
+    expect(operations[0].hasWhere).toBe(true);
+  });
+
+  it('should detect missing where on delete without where', () => {
+    const filePath = path.join(fixturesDir, 'app/routes/delete-no-where.tsx');
+    const { operations } = extractDbOperations(filePath);
+
+    expect(operations).toHaveLength(1);
+    expect(operations[0].type).toBe('delete');
+    expect(operations[0].hasWhere).toBe(false);
   });
 });
 
@@ -228,7 +267,7 @@ describe('persistence-check', () => {
       expect(issues).toHaveLength(0);
     });
 
-    it('should not flag inserts with literal enum values', () => {
+    it('should not flag inserts with valid literal enum values', () => {
       const schema = parseDrizzleSchema(schemaPath);
       const filePath = path.join(
         fixturesDir,
@@ -241,6 +280,301 @@ describe('persistence-check', () => {
         i.message.includes('Enum column')
       );
       expect(enumIssues).toHaveLength(0);
+    });
+  });
+
+  // ========================================================================
+  // New checks
+  // ========================================================================
+
+  describe('unknown table reference', () => {
+    it('should detect table not in schema', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/unknown-table.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const tableIssue = issues.find((i) =>
+        i.message.includes("Table 'widgets' not found")
+      );
+      expect(tableIssue).toBeDefined();
+      expect(tableIssue!.severity).toBe('error');
+    });
+
+    it('should not flag known tables', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/user-create.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const tableIssues = issues.filter((i) =>
+        i.message.includes('not found in Drizzle schema')
+      );
+      expect(tableIssues).toHaveLength(0);
+    });
+  });
+
+  describe('unknown column reference', () => {
+    it('should detect column not on table', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/unknown-column.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const colIssue = issues.find((i) =>
+        i.message.includes("Column 'middleName' not found on table 'users'")
+      );
+      expect(colIssue).toBeDefined();
+      expect(colIssue!.severity).toBe('error');
+    });
+
+    it('should not flag known columns', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(
+        fixturesDir,
+        'app/routes/user-correct-types.tsx'
+      );
+
+      const issues = checkPersistence([filePath], schema);
+
+      const colIssues = issues.filter((i) =>
+        i.message.includes('not found on table')
+      );
+      expect(colIssues).toHaveLength(0);
+    });
+  });
+
+  describe('null to notNull column', () => {
+    it('should detect null literal to notNull column on insert', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/null-notnull.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const nullIssue = issues.find(
+        (i) =>
+          i.message.includes("'name'") &&
+          i.message.includes('notNull') &&
+          i.message.includes('null')
+      );
+      expect(nullIssue).toBeDefined();
+      expect(nullIssue!.severity).toBe('error');
+    });
+
+    it('should detect null literal to notNull column on update', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(
+        fixturesDir,
+        'app/routes/update-null-notnull.tsx'
+      );
+
+      const issues = checkPersistence([filePath], schema);
+
+      const nullIssue = issues.find(
+        (i) =>
+          i.message.includes("'name'") &&
+          i.message.includes('notNull') &&
+          i.message.includes('null')
+      );
+      expect(nullIssue).toBeDefined();
+      expect(nullIssue!.severity).toBe('error');
+    });
+
+    it('should not flag null to nullable column', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(
+        fixturesDir,
+        'app/routes/user-correct-types.tsx'
+      );
+
+      const issues = checkPersistence([filePath], schema);
+
+      const nullIssues = issues.filter((i) =>
+        i.message.includes('notNull constraint but receives null')
+      );
+      expect(nullIssues).toHaveLength(0);
+    });
+  });
+
+  describe('invalid enum literal value', () => {
+    it('should detect invalid literal enum value', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(
+        fixturesDir,
+        'app/routes/invalid-enum-literal.tsx'
+      );
+
+      const issues = checkPersistence([filePath], schema);
+
+      const enumIssue = issues.find((i) =>
+        i.message.includes("invalid value 'archived'")
+      );
+      expect(enumIssue).toBeDefined();
+      expect(enumIssue!.severity).toBe('error');
+      expect(enumIssue!.suggestion).toContain('active');
+      expect(enumIssue!.suggestion).toContain('pending');
+      expect(enumIssue!.suggestion).toContain('closed');
+    });
+
+    it('should not flag valid literal enum value', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(
+        fixturesDir,
+        'app/routes/user-correct-types.tsx'
+      );
+
+      const issues = checkPersistence([filePath], schema);
+
+      const enumIssues = issues.filter((i) =>
+        i.message.includes('invalid value')
+      );
+      expect(enumIssues).toHaveLength(0);
+    });
+  });
+
+  describe('string to timestamp/date', () => {
+    it('should warn on string from formData to timestamp column', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(
+        fixturesDir,
+        'app/routes/string-to-timestamp.tsx'
+      );
+
+      const issues = checkPersistence([filePath], schema);
+
+      const timestampIssue = issues.find(
+        (i) =>
+          i.message.includes("'scheduledAt'") &&
+          i.message.includes('expects timestamp')
+      );
+      expect(timestampIssue).toBeDefined();
+      expect(timestampIssue!.severity).toBe('warning');
+      expect(timestampIssue!.suggestion).toContain('new Date');
+    });
+
+    it('should warn on string from formData to date column', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(
+        fixturesDir,
+        'app/routes/string-to-timestamp.tsx'
+      );
+
+      const issues = checkPersistence([filePath], schema);
+
+      const dateIssue = issues.find(
+        (i) =>
+          i.message.includes("'startDate'") &&
+          i.message.includes('expects date')
+      );
+      expect(dateIssue).toBeDefined();
+      expect(dateIssue!.severity).toBe('warning');
+      expect(dateIssue!.suggestion).toContain('new Date');
+    });
+
+    it('should not warn on timestamp columns with defaults', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/user-create.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const timestampIssues = issues.filter((i) =>
+        i.message.includes('expects timestamp')
+      );
+      expect(timestampIssues).toHaveLength(0);
+    });
+  });
+
+  describe('string to json/jsonb', () => {
+    it('should warn on string from formData to jsonb column', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/string-to-json.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const jsonIssue = issues.find(
+        (i) =>
+          i.message.includes("'metadata'") &&
+          i.message.includes('expects jsonb')
+      );
+      expect(jsonIssue).toBeDefined();
+      expect(jsonIssue!.severity).toBe('warning');
+      expect(jsonIssue!.suggestion).toContain('JSON.parse');
+    });
+  });
+
+  describe('write to auto-generated column', () => {
+    it('should warn when explicitly setting serial column', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/write-autogen.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const autoGenIssue = issues.find(
+        (i) =>
+          i.message.includes("'id'") && i.message.includes('auto-generated')
+      );
+      expect(autoGenIssue).toBeDefined();
+      expect(autoGenIssue!.severity).toBe('warning');
+      expect(autoGenIssue!.suggestion).toContain('Remove');
+    });
+
+    it('should not warn when serial column is omitted', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/user-create.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const autoGenIssues = issues.filter((i) =>
+        i.message.includes('auto-generated')
+      );
+      expect(autoGenIssues).toHaveLength(0);
+    });
+  });
+
+  describe('delete/update without where', () => {
+    it('should warn on delete without where clause', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/delete-no-where.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const whereIssue = issues.find(
+        (i) =>
+          i.message.includes('db.delete(users)') &&
+          i.message.includes('no .where()')
+      );
+      expect(whereIssue).toBeDefined();
+      expect(whereIssue!.severity).toBe('warning');
+    });
+
+    it('should warn on update without where clause', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(fixturesDir, 'app/routes/update-no-where.tsx');
+
+      const issues = checkPersistence([filePath], schema);
+
+      const whereIssue = issues.find(
+        (i) =>
+          i.message.includes('db.update(users)') &&
+          i.message.includes('no .where()')
+      );
+      expect(whereIssue).toBeDefined();
+      expect(whereIssue!.severity).toBe('warning');
+    });
+
+    it('should not warn on delete with where clause', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(
+        fixturesDir,
+        'app/routes/delete-with-where.tsx'
+      );
+
+      const issues = checkPersistence([filePath], schema);
+
+      const whereIssues = issues.filter((i) =>
+        i.message.includes('no .where()')
+      );
+      expect(whereIssues).toHaveLength(0);
     });
   });
 });

@@ -55,7 +55,7 @@ rr sql --drizzle --format json  # SQL extraction with JSON output
 
 - **forms** - validates Form action targets and method/action mismatches
 - **hydration** - detects hydration mismatches (Date, Math.random, window access in render)
-- **drizzle** - validates database operations against Drizzle ORM schema
+- **drizzle** - validates database operations against Drizzle ORM schema (unknown tables/columns, missing required columns, null-to-notNull, invalid enum literals, type mismatches, auto-generated column writes, DELETE/UPDATE without WHERE)
 
 ## Examples
 
