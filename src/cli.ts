@@ -4,6 +4,15 @@ import { applyFixes } from './fixer.js';
 import type { CliOptions, FixResult } from './types.js';
 import { formatIssues } from './utils/format-issue.js';
 import { formatResultJson } from './utils/format-json.js';
+import {
+  extractSqlQueries,
+  formatSqlResultsText,
+  formatSqlResultsJson,
+} from './sql-extractor.js';
+import {
+  discoverSchemaPath,
+  parseDrizzleSchema,
+} from './parsers/drizzle-schema-parser.js';
 
 // Injected by esbuild at build time
 declare const __VERSION__: string;
@@ -14,6 +23,14 @@ function getVersion(): string {
 
 function main(): void {
   const args = process.argv.slice(2);
+
+  // Check if this is a subcommand
+  const firstArg = args[0];
+  if (firstArg === 'sql') {
+    runSqlCommand(args.slice(1));
+    return;
+  }
+
   const options = parseArgs(args);
 
   if (options.version) {
@@ -62,6 +79,183 @@ function main(): void {
     process.exit(1);
   }
 }
+
+// ============================================================================
+// SQL Command
+// ============================================================================
+
+interface SqlCommandOptions {
+  help: boolean;
+  orm: string;
+  format: 'text' | 'json';
+  root: string;
+  drizzleSchemaPath?: string;
+  files: string[];
+}
+
+function parseSqlArgs(args: string[]): SqlCommandOptions {
+  const options: SqlCommandOptions = {
+    help: false,
+    orm: '',
+    format: 'text',
+    root: process.cwd(),
+    files: [],
+  };
+
+  let i = 0;
+  while (i < args.length) {
+    const arg = args[i];
+
+    if (arg === '--help' || arg === '-h') {
+      options.help = true;
+      i++;
+      continue;
+    }
+
+    if (arg === '--drizzle') {
+      options.orm = 'drizzle';
+      i++;
+      continue;
+    }
+
+    if (arg === '--drizzle-schema') {
+      const value = args[i + 1];
+      if (value) {
+        options.drizzleSchemaPath = path.resolve(value);
+      }
+      i += 2;
+      continue;
+    }
+
+    if (arg === '--format' || arg === '-f') {
+      const value = args[i + 1];
+      if (value === 'json' || value === 'text') {
+        options.format = value;
+      }
+      i += 2;
+      continue;
+    }
+
+    if (arg === '--root' || arg === '-r') {
+      const value = args[i + 1];
+      if (value) {
+        options.root = path.resolve(value);
+      }
+      i += 2;
+      continue;
+    }
+
+    // Positional argument - file to analyze
+    if (!arg.startsWith('-')) {
+      options.files.push(arg);
+    }
+
+    i++;
+  }
+
+  return options;
+}
+
+function runSqlCommand(args: string[]): void {
+  const options = parseSqlArgs(args);
+
+  if (options.help) {
+    printSqlHelp();
+    process.exit(0);
+  }
+
+  if (!options.orm) {
+    console.error(
+      'Error: You must specify an ORM. Use --drizzle to analyze Drizzle ORM queries.'
+    );
+    process.exit(1);
+  }
+
+  if (options.orm !== 'drizzle') {
+    console.error(
+      `Error: Unsupported ORM '${options.orm}'. Currently only --drizzle is supported.`
+    );
+    process.exit(1);
+  }
+
+  // Find and parse the Drizzle schema
+  const schemaPath =
+    options.drizzleSchemaPath || discoverSchemaPath(options.root);
+  if (!schemaPath) {
+    console.error(
+      'Error: Could not find Drizzle schema. Use --drizzle-schema to specify the path.'
+    );
+    process.exit(1);
+  }
+
+  let schema;
+  try {
+    schema = parseDrizzleSchema(schemaPath);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Error parsing Drizzle schema: ${message}`);
+    process.exit(1);
+  }
+
+  // Extract SQL queries
+  const results = extractSqlQueries({
+    root: options.root,
+    files: options.files,
+    schema,
+  });
+
+  // Output results
+  if (options.format === 'json') {
+    console.log(
+      JSON.stringify(formatSqlResultsJson(results, options.root), null, 2)
+    );
+  } else {
+    console.log(formatSqlResultsText(results, options.root));
+  }
+}
+
+function printSqlHelp(): void {
+  console.log(`
+rr sql - Extract and list SQL queries from ORM code
+
+USAGE:
+  rr sql --drizzle [OPTIONS] [FILES...]
+
+DESCRIPTION:
+  Analyzes your codebase to find all database queries written using an ORM
+  and generates the equivalent SQL statements. This helps verify that your
+  queries will work correctly against your database schema.
+
+ORM OPTIONS (one required):
+  --drizzle               Analyze Drizzle ORM queries
+
+OPTIONS:
+  -h, --help              Show this help message
+  -f, --format <format>   Output format: text (default) or json
+  -r, --root <path>       Project root directory (default: cwd)
+  --drizzle-schema <path> Path to Drizzle schema file (auto-discovered by default)
+
+EXAMPLES:
+  # Extract all SQL queries from route files
+  rr sql --drizzle
+
+  # Extract queries from a specific file
+  rr sql --drizzle app/routes/users.tsx
+
+  # Specify schema file explicitly
+  rr sql --drizzle --drizzle-schema src/db/schema.ts
+
+  # Output as JSON for processing
+  rr sql --drizzle --format json
+
+  # Use a different project root
+  rr sql --drizzle --root ./my-app
+`);
+}
+
+// ============================================================================
+// Analyze Command (default)
+// ============================================================================
 
 interface ParsedArgs extends CliOptions {
   help: boolean;
@@ -165,6 +359,10 @@ rr - Static analysis and functional verification for React Router applications
 
 USAGE:
   rr [OPTIONS] [FILES...]
+  rr <command> [OPTIONS] [FILES...]
+
+COMMANDS:
+  sql                     Extract SQL queries from ORM code (use 'rr sql --help' for details)
 
 OPTIONS:
   -h, --help              Show this help message
@@ -211,6 +409,12 @@ EXAMPLES:
 
   # Drizzle check with explicit schema path
   rr --check drizzle --drizzle-schema src/db/schema.ts
+
+  # Extract SQL queries from your Drizzle codebase
+  rr sql --drizzle
+
+  # Extract SQL queries in JSON format
+  rr sql --drizzle --format json
 `);
 }
 

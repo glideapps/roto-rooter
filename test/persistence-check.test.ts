@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as path from 'path';
 import { checkPersistence } from '../src/checks/persistence-check.js';
 import { parseDrizzleSchema } from '../src/parsers/drizzle-schema-parser.js';
-import { extractDbOperations } from '../src/parsers/action-parser.js';
+import { extractDbOperations } from '../src/sql/drizzle-operations.js';
 
 const fixturesDir = path.join(__dirname, 'fixtures/sample-app');
 const schemaPath = path.join(fixturesDir, 'db/schema.ts');

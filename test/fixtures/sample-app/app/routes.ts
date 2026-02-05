@@ -29,5 +29,7 @@ export default [
     route('/protocol-links', 'routes/protocol-links.tsx'),
     // Intent dispatch with top-level field reads
     route('/intent-toplevel', 'routes/intent-toplevel.tsx'),
+    // SQL extraction test fixture
+    route('/sql-operations/:id?', 'routes/sql-operations.tsx'),
   ]),
 ] satisfies RouteConfig;

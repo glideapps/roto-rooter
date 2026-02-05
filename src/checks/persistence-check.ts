@@ -6,7 +6,7 @@ import type {
   DbOperation,
   DbColumnValue,
 } from '../types.js';
-import { extractDbOperations } from '../parsers/action-parser.js';
+import { extractDbOperations } from '../sql/drizzle-operations.js';
 import {
   getTableByName,
   getEnumByName,
