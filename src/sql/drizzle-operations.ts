@@ -384,13 +384,14 @@ function parseDbOperation(
     return undefined;
   }
 
-  const { type, tableName, valuesCall } = chainInfo;
+  const { type, tableName, valuesCall, hasWhere } = chainInfo;
   const loc = getLineAndColumn(sourceFile, call.getStart(sourceFile));
 
   const operation: DbOperation = {
     type,
     tableName,
     columnValues: [],
+    hasWhere,
     location: {
       file: filePath,
       line: loc.line,
@@ -419,6 +420,7 @@ interface DbCallChainInfo {
   type: 'insert' | 'update' | 'delete';
   tableName: string;
   valuesCall?: ts.CallExpression;
+  hasWhere: boolean;
 }
 
 /**
@@ -433,6 +435,7 @@ function parseDbCallChain(
   let valuesCall: ts.CallExpression | undefined;
   let operationType: 'insert' | 'update' | 'delete' | undefined;
   let tableName: string | undefined;
+  let hasWhere = false;
 
   // Walk up the expression tree
   while (current) {
@@ -445,6 +448,11 @@ function parseDbCallChain(
         // Check for .values() or .set()
         if (methodName === 'values' || methodName === 'set') {
           valuesCall = current;
+        }
+
+        // Check for .where()
+        if (methodName === 'where') {
+          hasWhere = true;
         }
 
         // Check for db.insert(), db.update(), db.delete()
@@ -519,6 +527,9 @@ function parseDbCallChain(
     const expr = call.expression;
     if (ts.isPropertyAccessExpression(expr)) {
       const methodName = expr.name.text;
+      if (methodName === 'where') {
+        hasWhere = true;
+      }
       if (methodName === 'values' || methodName === 'set') {
         valuesCall = call;
 
@@ -557,7 +568,7 @@ function parseDbCallChain(
     return undefined;
   }
 
-  return { type: operationType, tableName, valuesCall };
+  return { type: operationType, tableName, valuesCall, hasWhere };
 }
 
 /**

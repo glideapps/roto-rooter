@@ -5,7 +5,9 @@ import {
   text,
   integer,
   timestamp,
+  date,
   boolean,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 
 // Enum definition
@@ -31,4 +33,13 @@ export const orders = pgTable('orders', {
   total: integer('total').notNull(), // REQUIRED integer
   notes: text('notes'), // optional
   createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Events table for timestamp/date/json testing
+export const events = pgTable('events', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  startDate: date('start_date').notNull(),
+  scheduledAt: timestamp('scheduled_at').notNull(),
+  metadata: jsonb('metadata'),
 });

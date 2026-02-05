@@ -14,7 +14,7 @@ describe('route-parser', () => {
     it('should parse routes from app/routes.ts', () => {
       const routes = parseRoutes(fixturesDir);
 
-      expect(routes).toHaveLength(23);
+      expect(routes).toHaveLength(34);
       expect(routes.map((r) => r.path)).toEqual([
         '/',
         '/employees',
@@ -33,6 +33,17 @@ describe('route-parser', () => {
         '/user-update',
         '/user-type-mismatch',
         '/user-correct-types',
+        '/unknown-table',
+        '/unknown-column',
+        '/null-notnull',
+        '/invalid-enum-literal',
+        '/string-to-timestamp',
+        '/string-to-json',
+        '/write-autogen',
+        '/update-null-notnull',
+        '/delete-no-where',
+        '/update-no-where',
+        '/delete-with-where',
         '/disconnected-dialog',
         '/connected-dialog',
         '/event-handlers',
