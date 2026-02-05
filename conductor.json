@@ -1,6 +1,6 @@
 {
   "scripts": {
     "setup": "npm install",
-    "run": "npx vitest run"
+    "run": "npm run test"
   }
 }
