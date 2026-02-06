@@ -12,6 +12,14 @@ export async function loader({ params }: LoaderFunctionArgs) {
   // Simple select all
   const allUsers = await db.select().from(users);
 
+  // Select specific columns
+  await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users);
+
+  // Select single column
+  await db.select({ id: users.id }).from(users);
+
   // Select with where clause
   const activeUsers = await db
     .select()

@@ -43,7 +43,7 @@ describe('route-parser', () => {
         '/delete-no-where',
         '/update-no-where',
         '/delete-with-where',
-        '/import-alias',
+        '/import-alias/:id?',
         '/disconnected-dialog',
         '/connected-dialog',
         '/event-handlers',
