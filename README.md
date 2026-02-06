@@ -25,7 +25,7 @@ Point `rr` at your project and it scans your route files for issues. With no arg
 
 **Checks at a glance:**
 
-- **links** (default) -- validates `<Link>`, `redirect()`, `navigate()` targets exist as routes
+- **links** (default) -- validates `<Link>`, `redirect()`, `navigate()`, and `href` props on any component exist as routes
 - **loader** (default) -- ensures `useLoaderData()` is backed by a loader; catches `clientLoader` importing server-only modules
 - **params** (default) -- ensures `useParams()` only accesses params defined in the route path
 - **interactivity** (default) -- catches "Save" buttons that don't save, "Delete" buttons that don't delete, and empty click handlers

@@ -90,6 +90,44 @@ describe('link-check', () => {
     expect(issues).toHaveLength(0);
   });
 
+  it('should detect broken href on custom components (ListItem, Card, etc.)', () => {
+    const routes = parseRoutes(fixturesDir);
+    const componentLinksPath = path.join(
+      fixturesDir,
+      'app/routes/component-links.tsx'
+    );
+    const component = parseComponent(componentLinksPath);
+
+    const issues = checkLinks([component], routes);
+
+    // Should flag "/walks" (static, no route defined)
+    expect(issues.some((i) => i.code?.includes('/walks'))).toBe(true);
+    // Should flag dynamic "/walks/:param" pattern (no route defined)
+    expect(
+      issues.some(
+        (i) => i.code?.includes('/walks/:param') || i.code?.includes('/walks/')
+      )
+    ).toBe(true);
+  });
+
+  it('should not flag valid href on custom components', () => {
+    const routes = parseRoutes(fixturesDir);
+    const componentLinksPath = path.join(
+      fixturesDir,
+      'app/routes/component-links.tsx'
+    );
+    const component = parseComponent(componentLinksPath);
+
+    const issues = checkLinks([component], routes);
+
+    // Should NOT flag "/employees" (valid static route)
+    expect(issues.some((i) => i.code?.includes('"/employees"'))).toBe(false);
+    // Should NOT flag "/employees/:param" (valid dynamic route)
+    expect(issues.some((i) => i.code?.includes('/employees/:param'))).toBe(
+      false
+    );
+  });
+
   it('should not flag protocol URLs (tel:, sms:, mailto:, etc.)', () => {
     const routes = parseRoutes(fixturesDir);
     const protocolLinksPath = path.join(

@@ -47,10 +47,10 @@ rr sql --drizzle --format json  # SQL extraction with JSON output
 
 **Default checks** (run automatically):
 
-- **links** - validates Link/NavLink href targets exist as routes
+- **links** - validates `<Link>`, `<NavLink>`, `redirect()`, `navigate()`, and `href` props on any component exist as routes
 - **loader** - detects loader data usage issues and `clientLoader`/`clientAction` with server-only imports
 - **params** - validates route params match definitions
-- **interactivity** - detects disconnected dialogs (Save buttons that don't save, stub handlers)
+- **interactivity** - detects disconnected dialogs ("Save" buttons that don't save, "Delete" buttons that don't delete, stub handlers)
 
 **Optional checks** (opt-in via `--check`):
 
