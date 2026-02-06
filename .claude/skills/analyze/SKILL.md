@@ -3,13 +3,18 @@ name: analyze
 description: Red-team verification of roto-rooter findings against a real app. Runs all checks and SQL extraction, then spins up subagents to independently validate each finding. Use when the user wants to verify roto-rooter accuracy, test for false positives, or audit an app with third-party validation of results.
 context: fork
 agent: general-purpose
+argument-hint: '[app-path]'
 ---
 
 # Analyze Skill
 
-Red-team verification of roto-rooter against a real application: `/analyze <app-path>`
+Red-team verification of roto-rooter against a real application.
 
-The `<app-path>` argument is the path to a React Router application to analyze. This can be an absolute path or a path relative to the current working directory. If the user provides a description instead of a path, ask them to clarify the app location.
+## Target App: `$ARGUMENTS`
+
+The target app path is: `$ARGUMENTS`
+
+Use this as `<app-path>` throughout the rest of these instructions. If it is an absolute path, use it directly. If it is a relative path, resolve it relative to the current working directory. If `$ARGUMENTS` is empty or not provided, ask the user which app to analyze using AskUserQuestion.
 
 ## Overview
 
