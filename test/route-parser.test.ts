@@ -53,6 +53,7 @@ describe('route-parser', () => {
         '/sql-operations/:id?',
         '/client-loader-db',
         '/client-loader-safe',
+        '/component-links',
       ]);
     });
 

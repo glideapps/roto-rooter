@@ -48,5 +48,7 @@ export default [
     // Client loader check fixtures
     route('/client-loader-db', 'routes/client-loader-db.tsx'),
     route('/client-loader-safe', 'routes/client-loader-safe.tsx'),
+    // Component href detection test
+    route('/component-links', 'routes/component-links.tsx'),
   ]),
 ] satisfies RouteConfig;

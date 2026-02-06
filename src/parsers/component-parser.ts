@@ -199,6 +199,22 @@ export function parseComponent(filePath: string): ComponentAnalysis {
       }
     }
 
+    // Check for any other component with an href prop (e.g. <ListItem href="...">, <Button href="...">)
+    if (
+      (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) &&
+      !isJsxElementWithName(node, 'Link') &&
+      !isJsxElementWithName(node, 'NavLink') &&
+      !isJsxElementWithName(node, 'a')
+    ) {
+      const hrefAttr = getJsxAttribute(node, 'href');
+      if (hrefAttr) {
+        const link = extractAnchorReference(node, sourceFile, filePath);
+        if (link) {
+          links.push(link);
+        }
+      }
+    }
+
     // Check for Form components
     if (isJsxElementWithName(node, 'Form')) {
       const form = extractFormReference(node, sourceFile, filePath);
