@@ -131,6 +131,49 @@ describe('sql-extractor', () => {
       expect(selectWithWhere).toBeDefined();
     });
 
+    it('should extract specific columns from .select({ ... })', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-operations.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const selectQueries = queries.filter((q) => q.type === 'SELECT');
+
+      // Select with named columns: .select({ id: users.id, name: users.name, email: users.email })
+      const namedSelect = selectQueries.find(
+        (q) =>
+          q.sql.includes('SELECT id, name, email FROM') &&
+          !q.sql.includes('SELECT *')
+      );
+      expect(namedSelect).toBeDefined();
+      expect(namedSelect!.sql).toContain('FROM users');
+
+      // Select with single column: .select({ id: users.id })
+      const singleColSelect = selectQueries.find(
+        (q) => q.sql.includes('SELECT id FROM') && !q.sql.includes('SELECT *')
+      );
+      expect(singleColSelect).toBeDefined();
+    });
+
+    it('should still use SELECT * for empty .select()', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-operations.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const selectQueries = queries.filter((q) => q.type === 'SELECT');
+
+      // Empty .select() should remain SELECT *
+      const selectAll = selectQueries.find(
+        (q) => q.sql.includes('SELECT * FROM users') && !q.sql.includes('WHERE')
+      );
+      expect(selectAll).toBeDefined();
+    });
+
     it('should track parameters for dynamic values', () => {
       const results = extractSqlQueries({
         root: fixturesDir,
@@ -197,6 +240,52 @@ describe('sql-extractor', () => {
       expect(queries).toHaveLength(1);
       expect(queries[0].type).toBe('INSERT');
       expect(queries[0].sql).toContain('INSERT INTO users');
+    });
+
+    it('should resolve import aliases in table names', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/import-alias.tsx')],
+        schema,
+      });
+
+      expect(results).toHaveLength(1);
+      const queries = results[0].queries;
+
+      // All queries should use 'users' (the real SQL table name), not 'usersTable'
+      for (const query of queries) {
+        expect(query.sql).not.toContain('usersTable');
+        expect(query.sql).toContain('users');
+      }
+
+      // Should have SELECT queries
+      const selectQueries = queries.filter((q) => q.type === 'SELECT');
+      expect(selectQueries.length).toBeGreaterThanOrEqual(2);
+
+      // Should have an INSERT query
+      const insertQueries = queries.filter((q) => q.type === 'INSERT');
+      expect(insertQueries.length).toBe(1);
+      expect(insertQueries[0].sql).toContain('INSERT INTO users');
+    });
+
+    it('should resolve aliases AND extract specific columns together', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/import-alias.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const selectQueries = queries.filter((q) => q.type === 'SELECT');
+
+      // .select({ id: usersTable.id, name: usersTable.name }).from(usersTable)
+      // Should produce: SELECT id, name FROM users
+      const namedSelect = selectQueries.find((q) =>
+        q.sql.includes('SELECT id, name FROM')
+      );
+      expect(namedSelect).toBeDefined();
+      expect(namedSelect!.sql).toContain('FROM users');
+      expect(namedSelect!.sql).not.toContain('usersTable');
     });
   });
 

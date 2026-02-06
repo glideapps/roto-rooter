@@ -92,7 +92,11 @@ function extractQueriesFromFile(
   // Track db variable names (could be imported as different names)
   const dbVariables = new Set<string>(['db']);
 
-  // First pass: find db imports/variables
+  // Build import alias map: local name -> original export name
+  // e.g., import { tasks as tasksTable } -> "tasksTable" -> "tasks"
+  const importAliases = new Map<string, string>();
+
+  // First pass: find db imports/variables and import aliases
   walkAst(sourceFile, (node) => {
     if (ts.isImportDeclaration(node) && node.importClause?.namedBindings) {
       if (ts.isNamedImports(node.importClause.namedBindings)) {
@@ -102,6 +106,10 @@ function extractQueriesFromFile(
             element.name.text === 'db'
           ) {
             dbVariables.add(element.name.text);
+          }
+          if (element.propertyName) {
+            // { original as alias } -> map alias to original
+            importAliases.set(element.name.text, element.propertyName.text);
           }
         }
       }
@@ -127,7 +135,8 @@ function extractQueriesFromFile(
         filePath,
         content,
         schema,
-        dbVariables
+        dbVariables,
+        importAliases
       );
       if (query) {
         queries.push(query);
@@ -156,7 +165,8 @@ function parseDbQuery(
   filePath: string,
   content: string,
   schema: DrizzleSchema,
-  dbVariables: Set<string>
+  dbVariables: Set<string>,
+  importAliases: Map<string, string>
 ): ExtractedQuery | undefined {
   let expr: ts.Node = node;
   if (ts.isAwaitExpression(expr)) {
@@ -178,6 +188,15 @@ function parseDbQuery(
     node.getStart(sourceFile),
     node.getEnd()
   );
+
+  // Resolve import aliases for table name (e.g., tasksTable -> tasks)
+  chainInfo.tableName =
+    importAliases.get(chainInfo.tableName) || chainInfo.tableName;
+  if (chainInfo.joins) {
+    for (const join of chainInfo.joins) {
+      join.table = importAliases.get(join.table) || join.table;
+    }
+  }
 
   const query = generateSql(chainInfo, schema);
   if (!query) {
@@ -265,6 +284,12 @@ function analyzeDbChain(
 
   for (const { method, args } of chain) {
     switch (method) {
+      case 'select':
+        if (args.length > 0 && ts.isObjectLiteralExpression(args[0])) {
+          info.selectColumns = extractSelectColumns(args[0]);
+        }
+        break;
+
       case 'from':
         if (args.length > 0 && !info.tableName) {
           info.tableName = getTableNameFromArg(args[0]);
@@ -378,6 +403,27 @@ function getTableNameFromArg(arg: ts.Expression): string {
     return arg.name.text;
   }
   return '';
+}
+
+function extractSelectColumns(arg: ts.ObjectLiteralExpression): string[] {
+  const columns: string[] = [];
+
+  for (const prop of arg.properties) {
+    if (ts.isPropertyAssignment(prop)) {
+      const key = ts.isIdentifier(prop.name)
+        ? prop.name.text
+        : ts.isStringLiteral(prop.name)
+          ? prop.name.text
+          : undefined;
+      if (key) {
+        columns.push(key);
+      }
+    } else if (ts.isShorthandPropertyAssignment(prop)) {
+      columns.push(prop.name.text);
+    }
+  }
+
+  return columns;
 }
 
 function extractObjectValues(arg: ts.Expression): Map<string, ValueInfo> {

@@ -1,9 +1,29 @@
 // Test fixture: Import aliases for table names
 // import { users as usersTable } should resolve to the 'users' table in schema
 
-import { ActionFunctionArgs } from 'react-router';
+import { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import { db } from '~/db';
 import { users as usersTable } from '~/db/schema';
+import { eq } from 'drizzle-orm';
+
+export async function loader({ params }: LoaderFunctionArgs) {
+  // SELECT with aliased table name - should resolve to 'users'
+  const allUsers = await db.select().from(usersTable);
+
+  // SELECT specific columns with aliased table
+  const userNames = await db
+    .select({ id: usersTable.id, name: usersTable.name })
+    .from(usersTable);
+
+  // SELECT with where using aliased table
+  const user = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, Number(params.id)))
+    .limit(1);
+
+  return { allUsers, userNames, user };
+}
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
