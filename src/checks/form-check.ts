@@ -111,7 +111,9 @@ function validateForm(
     }
   } else {
     // Form submits to current route - check if current file has action
-    if (!component.hasAction) {
+    // Skip forms inside named export helper components -- they're utility components
+    // intended for use in other routes that provide their own action
+    if (!component.hasAction && !form.inNamedExport) {
       // Not auto-fixable - requires adding business logic
       issues.push({
         category: 'forms',
@@ -121,7 +123,7 @@ function validateForm(
         code: '<Form>',
         suggestion: 'Add an action export to handle form submission',
       });
-    } else {
+    } else if (component.hasAction) {
       // Action exists in current file - check field alignment
       const routeFilePath = component.file;
       try {

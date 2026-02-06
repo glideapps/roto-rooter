@@ -44,6 +44,8 @@ export function parseComponent(filePath: string): ComponentAnalysis {
   const serverFunctionBodies = new Set<ts.Node>();
   // Track event handler function bodies - code here only runs on user interaction, not during render
   const eventHandlerBodies = new Set<ts.Node>();
+  // Track named export function bodies (not loader/action/default) - Forms inside these are utility components
+  const namedExportBodies = new Set<ts.Node>();
 
   // First pass: find all elements with suppressHydrationWarning, server function bodies, and event handlers
   walkAst(sourceFile, (node) => {
@@ -53,12 +55,22 @@ export function parseComponent(filePath: string): ComponentAnalysis {
       }
     }
 
-    // Find loader/action function bodies
+    // Find loader/action function bodies and named export component bodies
     if (ts.isFunctionDeclaration(node) && node.name && isExported(node)) {
       const name = node.name.text;
       if (name === 'loader' || name === 'action') {
         if (node.body) {
           serverFunctionBodies.add(node.body);
+        }
+      } else {
+        const modifiers = ts.canHaveModifiers(node)
+          ? ts.getModifiers(node)
+          : undefined;
+        const isDefault =
+          modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword) ??
+          false;
+        if (!isDefault && node.body) {
+          namedExportBodies.add(node.body);
         }
       }
     }
@@ -76,6 +88,15 @@ export function parseComponent(filePath: string): ComponentAnalysis {
                 ts.isFunctionExpression(decl.initializer)
               ) {
                 serverFunctionBodies.add(decl.initializer.body);
+              }
+            }
+          } else {
+            if (decl.initializer) {
+              if (
+                ts.isArrowFunction(decl.initializer) ||
+                ts.isFunctionExpression(decl.initializer)
+              ) {
+                namedExportBodies.add(decl.initializer.body);
               }
             }
           }
@@ -158,6 +179,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     if (isJsxElementWithName(node, 'Form')) {
       const form = extractFormReference(node, sourceFile, filePath);
       if (form) {
+        form.inNamedExport = isInsideNamedExport(node, namedExportBodies);
         forms.push(form);
       }
     }
@@ -785,6 +807,24 @@ function isInsideEventHandler(
 }
 
 /**
+ * Check if a node is inside a named export function (not default/loader/action)
+ * Forms inside these are utility components, not the route's own forms
+ */
+function isInsideNamedExport(
+  node: ts.Node,
+  namedExportBodies: Set<ts.Node>
+): boolean {
+  let current: ts.Node | undefined = node;
+  while (current) {
+    if (namedExportBodies.has(current)) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
+/**
  * Check if a function name follows event handler naming conventions
  * Common patterns: handleClick, handleSubmit, onClick, onSubmit, etc.
  */
@@ -831,17 +871,20 @@ function detectHydrationRisk(
   const pos = getLineAndColumn(sourceFile, node.getStart());
   const location = { file: filePath, line: pos.line, column: pos.column };
 
-  // Detect new Date() calls
+  // Detect new Date() calls -- only no-arg calls are non-deterministic
+  // new Date(someArg) is deterministic (converts a known value) and safe
   if (ts.isNewExpression(node)) {
     if (ts.isIdentifier(node.expression) && node.expression.text === 'Date') {
-      return {
-        type: 'date-render',
-        location,
-        code: node.getText(sourceFile),
-        inUseEffect,
-        hasSuppressWarning,
-        callSpan: getNodeSpan(sourceFile, node, filePath),
-      };
+      if (!node.arguments || node.arguments.length === 0) {
+        return {
+          type: 'date-render',
+          location,
+          code: node.getText(sourceFile),
+          inUseEffect,
+          hasSuppressWarning,
+          callSpan: getNodeSpan(sourceFile, node, filePath),
+        };
+      }
     }
   }
 

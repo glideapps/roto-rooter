@@ -173,4 +173,35 @@ describe('form-check', () => {
       expect(exports.intentFieldGroups!.get('archive')).toEqual([]);
     });
   });
+
+  describe('named export helper components', () => {
+    it('should not flag forms inside named export functions', () => {
+      const routes = parseRoutes(fixturesDir);
+      const connectedDialogPath = path.join(
+        fixturesDir,
+        'app/routes/connected-dialog.tsx'
+      );
+      const component = parseComponent(connectedDialogPath);
+
+      expect(component.forms.length).toBeGreaterThanOrEqual(2);
+      expect(component.hasAction).toBe(false);
+
+      const issues = checkForms([component], routes, fixturesDir);
+
+      const noActionErrors = issues.filter((i) =>
+        i.message.includes('no action export')
+      );
+      expect(noActionErrors).toHaveLength(0);
+    });
+
+    it('should mark forms inside named exports with inNamedExport flag', () => {
+      const connectedDialogPath = path.join(
+        fixturesDir,
+        'app/routes/connected-dialog.tsx'
+      );
+      const component = parseComponent(connectedDialogPath);
+
+      expect(component.forms.every((f) => f.inNamedExport)).toBe(true);
+    });
+  });
 });

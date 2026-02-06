@@ -11,12 +11,12 @@ export function loader() {
 export default function HydrationDedup() {
   const data = useLoaderData();
 
-  // Case 1: locale-format should suppress contained date-render
-  // Should only report 1 error (locale-format), not 2
+  // Case 1: locale-format error on toLocaleDateString()
+  // new Date(data.date) is deterministic (has args), so only locale-format is reported
   const formatted1 = new Date(data.date).toLocaleDateString();
 
-  // Case 2: Nested date-render - outer should suppress inner
-  // Should only report 1 error (outer date-render), not 2
+  // Case 2: Only the inner no-arg new Date() is flagged
+  // new Date(data.date) and new Date(...setHours...) have args and are not flagged
   const isToday =
     new Date(data.date) >= new Date(new Date().setHours(0, 0, 0, 0));
 

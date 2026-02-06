@@ -50,6 +50,8 @@ export interface FormReference {
   location: SourceLocation;
   /** Span of the action attribute value for auto-fix */
   actionSpan?: SourceSpan;
+  /** Whether this form is inside a named export function (not default/loader/action) */
+  inNamedExport?: boolean;
 }
 
 /**
