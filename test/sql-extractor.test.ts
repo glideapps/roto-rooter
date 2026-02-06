@@ -434,6 +434,49 @@ describe('sql-extractor', () => {
       expect(multiCondJoin!.sql).toContain(' AND ');
     });
 
+    it('should handle JOIN with or() ON conditions', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      // or(eq(users.id, orders.userId), eq(users.name, orders.status))
+      const orJoin = queries.find(
+        (q) =>
+          q.sql.includes('INNER JOIN orders') &&
+          q.sql.includes(' OR ') &&
+          q.sql.includes('users.name = orders.status')
+      );
+      expect(orJoin).toBeDefined();
+      expect(orJoin!.sql).toContain(
+        'users.id = orders.user_id OR users.name = orders.status'
+      );
+      expect(orJoin!.sql).not.toContain(' AND ');
+    });
+
+    it('should handle JOIN with nested and()/or() ON conditions', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      // and(eq(users.id, orders.userId), or(eq(orders.status, users.status), eq(orders.total, users.id)))
+      const nestedJoin = queries.find(
+        (q) =>
+          q.sql.includes('INNER JOIN orders') &&
+          q.sql.includes(' AND ') &&
+          q.sql.includes(' OR ')
+      );
+      expect(nestedJoin).toBeDefined();
+      expect(nestedJoin!.sql).toContain(
+        'users.id = orders.user_id AND (orders.status = users.status OR orders.total = users.id)'
+      );
+    });
+
     it('should handle JOIN with named columns', () => {
       const results = extractSqlQueries({
         root: fixturesDir,

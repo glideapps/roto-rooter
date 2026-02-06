@@ -46,7 +46,8 @@ interface WhereCondition {
   value: ValueInfo;
 }
 
-interface JoinOnCondition {
+interface JoinOnComparison {
+  kind: 'comparison';
   leftTable: string;
   leftColumn: string;
   operator: string;
@@ -54,10 +55,17 @@ interface JoinOnCondition {
   rightColumn: string;
 }
 
+interface JoinOnLogical {
+  kind: 'and' | 'or';
+  children: JoinOnNode[];
+}
+
+type JoinOnNode = JoinOnComparison | JoinOnLogical;
+
 interface JoinInfo {
   type: 'inner' | 'left' | 'right' | 'full';
   table: string;
-  onConditions: JoinOnCondition[];
+  on: JoinOnNode | null;
 }
 
 interface GroupByColumn {
@@ -209,10 +217,7 @@ function parseDbQuery(
   if (chainInfo.joins) {
     for (const join of chainInfo.joins) {
       join.table = importAliases.get(join.table) || join.table;
-      for (const cond of join.onConditions) {
-        cond.leftTable = importAliases.get(cond.leftTable) || cond.leftTable;
-        cond.rightTable = importAliases.get(cond.rightTable) || cond.rightTable;
-      }
+      if (join.on) resolveJoinOnAliases(join.on, importAliases);
     }
   }
   if (chainInfo.groupBy) {
@@ -352,7 +357,7 @@ function analyzeDbChain(
             {
               type: joinType,
               table: getTableNameFromArg(args[0]),
-              onConditions: extractJoinOnConditions(args[1]),
+              on: extractJoinOnNode(args[1]),
             },
           ];
         }
@@ -605,9 +610,7 @@ function getColumnNameFromExpr(expr: ts.Expression): string {
 // JOIN ON Extraction
 // ============================================================================
 
-function extractJoinOnConditions(expr: ts.Expression): JoinOnCondition[] {
-  const conditions: JoinOnCondition[] = [];
-
+function extractJoinOnNode(expr: ts.Expression): JoinOnNode | null {
   if (ts.isCallExpression(expr)) {
     const funcExpr = expr.expression;
 
@@ -626,25 +629,68 @@ function extractJoinOnConditions(expr: ts.Expression): JoinOnCondition[] {
         const left = extractColumnRef(expr.arguments[0]);
         const right = extractColumnRef(expr.arguments[1]);
         if (left && right) {
-          conditions.push({
+          return {
+            kind: 'comparison',
             leftTable: left.table,
             leftColumn: left.column,
             operator: operatorMap[operator],
             rightTable: right.table,
             rightColumn: right.column,
-          });
+          };
         }
       }
 
       if (operator === 'and' || operator === 'or') {
+        const children: JoinOnNode[] = [];
         for (const arg of expr.arguments) {
-          conditions.push(...extractJoinOnConditions(arg));
+          const child = extractJoinOnNode(arg);
+          if (child) children.push(child);
+        }
+        if (children.length > 0) {
+          return { kind: operator, children };
         }
       }
     }
   }
 
-  return conditions;
+  return null;
+}
+
+function resolveJoinOnAliases(
+  node: JoinOnNode,
+  aliases: Map<string, string>
+): void {
+  if (node.kind === 'comparison') {
+    node.leftTable = aliases.get(node.leftTable) || node.leftTable;
+    node.rightTable = aliases.get(node.rightTable) || node.rightTable;
+  } else {
+    for (const child of node.children) {
+      resolveJoinOnAliases(child, aliases);
+    }
+  }
+}
+
+function renderJoinOnNode(node: JoinOnNode, schema: DrizzleSchema): string {
+  if (node.kind === 'comparison') {
+    const lt = getTableByName(schema, node.leftTable);
+    const ltName = lt?.sqlName || node.leftTable;
+    const ltCol =
+      lt?.columns.find((c) => c.name === node.leftColumn)?.sqlName ||
+      node.leftColumn;
+    const rt = getTableByName(schema, node.rightTable);
+    const rtName = rt?.sqlName || node.rightTable;
+    const rtCol =
+      rt?.columns.find((c) => c.name === node.rightColumn)?.sqlName ||
+      node.rightColumn;
+    return `${ltName}.${ltCol} ${node.operator} ${rtName}.${rtCol}`;
+  }
+
+  const sep = node.kind === 'or' ? ' OR ' : ' AND ';
+  const parts = node.children.map((child) => renderJoinOnNode(child, schema));
+  if (parts.length === 1) return parts[0];
+  const inner = parts.join(sep);
+  // Wrap OR groups in parentheses when they appear inside an AND
+  return node.kind === 'or' ? `(${inner})` : inner;
 }
 
 function extractColumnRef(
@@ -779,21 +825,9 @@ function generateSql(
           const joinTableName = joinTable?.sqlName || join.table;
           tables.push(joinTableName);
 
-          const onClause = join.onConditions
-            .map((cond) => {
-              const lt = getTableByName(schema, cond.leftTable);
-              const ltName = lt?.sqlName || cond.leftTable;
-              const ltCol =
-                lt?.columns.find((c) => c.name === cond.leftColumn)?.sqlName ||
-                cond.leftColumn;
-              const rt = getTableByName(schema, cond.rightTable);
-              const rtName = rt?.sqlName || cond.rightTable;
-              const rtCol =
-                rt?.columns.find((c) => c.name === cond.rightColumn)?.sqlName ||
-                cond.rightColumn;
-              return `${ltName}.${ltCol} ${cond.operator} ${rtName}.${rtCol}`;
-            })
-            .join(' AND ');
+          const onClause = join.on
+            ? renderJoinOnNode(join.on, schema)
+            : '1 = 1';
 
           sql += ` ${join.type.toUpperCase()} JOIN ${joinTableName} ON ${onClause}`;
         }

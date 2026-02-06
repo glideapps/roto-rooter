@@ -4,7 +4,7 @@
 import { LoaderFunctionArgs } from 'react-router';
 import { db } from '~/db';
 import { users, orders } from '~/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, or, desc } from 'drizzle-orm';
 
 export async function loader({ params: _params }: LoaderFunctionArgs) {
   // INNER JOIN with eq
@@ -55,6 +55,27 @@ export async function loader({ params: _params }: LoaderFunctionArgs) {
     .innerJoin(orders, eq(users.id, orders.userId))
     .groupBy(users.id, orders.status);
 
+  // JOIN with or() ON conditions
+  const flexibleMatch = await db
+    .select()
+    .from(users)
+    .innerJoin(
+      orders,
+      or(eq(users.id, orders.userId), eq(users.name, orders.status))
+    );
+
+  // JOIN with and() containing nested or()
+  const complexMatch = await db
+    .select()
+    .from(users)
+    .innerJoin(
+      orders,
+      and(
+        eq(users.id, orders.userId),
+        or(eq(orders.status, users.status), eq(orders.total, users.id))
+      )
+    );
+
   // JOIN with GROUP BY, ORDER BY, and LIMIT
   const topUsers = await db
     .select({ id: users.id, name: users.name })
@@ -72,6 +93,8 @@ export async function loader({ params: _params }: LoaderFunctionArgs) {
     orderSummary,
     userOrderCounts,
     ordersByStatus,
+    flexibleMatch,
+    complexMatch,
     topUsers,
   };
 }
