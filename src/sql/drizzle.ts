@@ -27,6 +27,7 @@ interface DbChainInfo {
   setValues?: Map<string, ValueInfo>;
   whereConditions?: WhereCondition[];
   joins?: JoinInfo[];
+  groupBy?: GroupByColumn[];
   orderBy?: OrderByInfo[];
   limit?: number;
   offset?: number;
@@ -45,10 +46,23 @@ interface WhereCondition {
   value: ValueInfo;
 }
 
+interface JoinOnCondition {
+  leftTable: string;
+  leftColumn: string;
+  operator: string;
+  rightTable: string;
+  rightColumn: string;
+}
+
 interface JoinInfo {
   type: 'inner' | 'left' | 'right' | 'full';
   table: string;
-  on: string;
+  onConditions: JoinOnCondition[];
+}
+
+interface GroupByColumn {
+  table: string;
+  column: string;
 }
 
 interface OrderByInfo {
@@ -195,6 +209,15 @@ function parseDbQuery(
   if (chainInfo.joins) {
     for (const join of chainInfo.joins) {
       join.table = importAliases.get(join.table) || join.table;
+      for (const cond of join.onConditions) {
+        cond.leftTable = importAliases.get(cond.leftTable) || cond.leftTable;
+        cond.rightTable = importAliases.get(cond.rightTable) || cond.rightTable;
+      }
+    }
+  }
+  if (chainInfo.groupBy) {
+    for (const col of chainInfo.groupBy) {
+      col.table = importAliases.get(col.table) || col.table;
     }
   }
 
@@ -329,9 +352,15 @@ function analyzeDbChain(
             {
               type: joinType,
               table: getTableNameFromArg(args[0]),
-              on: args[1].getText(),
+              onConditions: extractJoinOnConditions(args[1]),
             },
           ];
+        }
+        break;
+
+      case 'groupBy':
+        if (args.length > 0) {
+          info.groupBy = extractGroupByColumns(args);
         }
         break;
 
@@ -573,6 +602,84 @@ function getColumnNameFromExpr(expr: ts.Expression): string {
 }
 
 // ============================================================================
+// JOIN ON Extraction
+// ============================================================================
+
+function extractJoinOnConditions(expr: ts.Expression): JoinOnCondition[] {
+  const conditions: JoinOnCondition[] = [];
+
+  if (ts.isCallExpression(expr)) {
+    const funcExpr = expr.expression;
+
+    if (ts.isIdentifier(funcExpr)) {
+      const operator = funcExpr.text;
+      const operatorMap: Record<string, string> = {
+        eq: '=',
+        ne: '!=',
+        lt: '<',
+        lte: '<=',
+        gt: '>',
+        gte: '>=',
+      };
+
+      if (operatorMap[operator] && expr.arguments.length >= 2) {
+        const left = extractColumnRef(expr.arguments[0]);
+        const right = extractColumnRef(expr.arguments[1]);
+        if (left && right) {
+          conditions.push({
+            leftTable: left.table,
+            leftColumn: left.column,
+            operator: operatorMap[operator],
+            rightTable: right.table,
+            rightColumn: right.column,
+          });
+        }
+      }
+
+      if (operator === 'and' || operator === 'or') {
+        for (const arg of expr.arguments) {
+          conditions.push(...extractJoinOnConditions(arg));
+        }
+      }
+    }
+  }
+
+  return conditions;
+}
+
+function extractColumnRef(
+  expr: ts.Expression
+): { table: string; column: string } | undefined {
+  if (ts.isPropertyAccessExpression(expr)) {
+    const table = getTableNameFromArg(expr.expression);
+    const column = expr.name.text;
+    if (table) {
+      return { table, column };
+    }
+  }
+  return undefined;
+}
+
+// ============================================================================
+// GROUP BY Extraction
+// ============================================================================
+
+function extractGroupByColumns(
+  args: readonly ts.Expression[]
+): GroupByColumn[] {
+  const columns: GroupByColumn[] = [];
+
+  for (const arg of args) {
+    const ref = extractColumnRef(arg);
+    if (ref) {
+      columns.push({ table: ref.table, column: ref.column });
+    }
+  }
+
+  return columns;
+}
+
+// ============================================================================
 // ORDER BY Extraction
 // ============================================================================
 
@@ -671,7 +778,24 @@ function generateSql(
           const joinTable = getTableByName(schema, join.table);
           const joinTableName = joinTable?.sqlName || join.table;
           tables.push(joinTableName);
-          sql += ` ${join.type.toUpperCase()} JOIN ${joinTableName} ON ${join.on}`;
+
+          const onClause = join.onConditions
+            .map((cond) => {
+              const lt = getTableByName(schema, cond.leftTable);
+              const ltName = lt?.sqlName || cond.leftTable;
+              const ltCol =
+                lt?.columns.find((c) => c.name === cond.leftColumn)?.sqlName ||
+                cond.leftColumn;
+              const rt = getTableByName(schema, cond.rightTable);
+              const rtName = rt?.sqlName || cond.rightTable;
+              const rtCol =
+                rt?.columns.find((c) => c.name === cond.rightColumn)?.sqlName ||
+                cond.rightColumn;
+              return `${ltName}.${ltCol} ${cond.operator} ${rtName}.${rtCol}`;
+            })
+            .join(' AND ');
+
+          sql += ` ${join.type.toUpperCase()} JOIN ${joinTableName} ON ${onClause}`;
         }
       }
 
@@ -686,6 +810,19 @@ function generateSql(
           })
           .join(' AND ');
         sql += ` WHERE ${whereClause}`;
+      }
+
+      if (info.groupBy && info.groupBy.length > 0) {
+        const groupClause = info.groupBy
+          .map((g) => {
+            const t = getTableByName(schema, g.table);
+            const tName = t?.sqlName || g.table;
+            const col =
+              t?.columns.find((c) => c.name === g.column)?.sqlName || g.column;
+            return `${tName}.${col}`;
+          })
+          .join(', ');
+        sql += ` GROUP BY ${groupClause}`;
       }
 
       if (info.orderBy && info.orderBy.length > 0) {

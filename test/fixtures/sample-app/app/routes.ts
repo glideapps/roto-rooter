@@ -43,8 +43,9 @@ export default [
     route('/intent-toplevel', 'routes/intent-toplevel.tsx'),
     // Intent dispatch with type-cast intent variable
     route('/intent-typecast', 'routes/intent-typecast.tsx'),
-    // SQL extraction test fixture
+    // SQL extraction test fixtures
     route('/sql-operations/:id?', 'routes/sql-operations.tsx'),
+    route('/sql-joins', 'routes/sql-joins.tsx'),
     // Client loader check fixtures
     route('/client-loader-db', 'routes/client-loader-db.tsx'),
     route('/client-loader-safe', 'routes/client-loader-safe.tsx'),
