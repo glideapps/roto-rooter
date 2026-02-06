@@ -155,6 +155,43 @@ describe('form-check', () => {
       expect(errors).toHaveLength(0);
     });
 
+    it('should handle intent variable with type cast (as string)', () => {
+      const routes = parseRoutes(fixturesDir);
+      const intentTypeCastPath = path.join(
+        fixturesDir,
+        'app/routes/intent-typecast.tsx'
+      );
+      const component = parseComponent(intentTypeCastPath);
+
+      const issues = checkForms([component], routes, fixturesDir);
+
+      // Should have no errors - delete form should not need name/email/phone
+      const errors = issues.filter((i) => i.severity === 'error');
+      expect(errors).toHaveLength(0);
+    });
+
+    it('should extract intent field groups when intent uses type cast', () => {
+      const intentTypeCastPath = path.join(
+        fixturesDir,
+        'app/routes/intent-typecast.tsx'
+      );
+      const exports = parseRouteExports(intentTypeCastPath);
+
+      expect(exports.intentFieldGroups).toBeDefined();
+      expect(exports.intentFieldGroups!.has('update')).toBe(true);
+      expect(exports.intentFieldGroups!.has('delete')).toBe(true);
+      expect(exports.intentFieldGroups!.has('archive')).toBe(true);
+
+      // update should have name, email, phone
+      expect(exports.intentFieldGroups!.get('update')).toEqual(
+        expect.arrayContaining(['name', 'email', 'phone'])
+      );
+      // delete should have no fields
+      expect(exports.intentFieldGroups!.get('delete')).toEqual([]);
+      // archive should have reason
+      expect(exports.intentFieldGroups!.get('archive')).toEqual(['reason']);
+    });
+
     it('should track all intent values even when no fields are read inside the block', () => {
       const intentTopLevelPath = path.join(
         fixturesDir,

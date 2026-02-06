@@ -49,6 +49,7 @@ describe('route-parser', () => {
         '/event-handlers',
         '/protocol-links',
         '/intent-toplevel',
+        '/intent-typecast',
         '/sql-operations/:id?',
         '/client-loader-db',
         '/client-loader-safe',
