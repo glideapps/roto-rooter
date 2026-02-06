@@ -51,6 +51,7 @@ describe('route-parser', () => {
         '/intent-toplevel',
         '/intent-typecast',
         '/sql-operations/:id?',
+        '/sql-joins',
         '/client-loader-db',
         '/client-loader-safe',
         '/component-links',

@@ -359,6 +359,216 @@ describe('sql-extractor', () => {
     });
   });
 
+  describe('JOIN extraction', () => {
+    it('should translate INNER JOIN ON eq() to proper SQL', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const selectQueries = queries.filter((q) => q.type === 'SELECT');
+
+      // innerJoin(orders, eq(users.id, orders.userId))
+      const innerJoin = selectQueries.find(
+        (q) =>
+          q.sql.includes('INNER JOIN orders') &&
+          !q.sql.includes('WHERE') &&
+          q.sql.includes('SELECT *')
+      );
+      expect(innerJoin).toBeDefined();
+      expect(innerJoin!.sql).toContain('ON users.id = orders.user_id');
+      expect(innerJoin!.sql).not.toContain('eq(');
+    });
+
+    it('should translate LEFT JOIN ON eq() to proper SQL', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const leftJoin = queries.find((q) => q.sql.includes('LEFT JOIN orders'));
+      expect(leftJoin).toBeDefined();
+      expect(leftJoin!.sql).toContain('ON users.id = orders.user_id');
+      expect(leftJoin!.sql).not.toContain('eq(');
+    });
+
+    it('should handle JOIN with WHERE clause', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const joinWithWhere = queries.find(
+        (q) =>
+          q.sql.includes('INNER JOIN orders') &&
+          q.sql.includes('WHERE') &&
+          q.sql.includes('SELECT *')
+      );
+      expect(joinWithWhere).toBeDefined();
+      expect(joinWithWhere!.sql).toContain('ON users.id = orders.user_id');
+      expect(joinWithWhere!.sql).toContain("WHERE status = 'active'");
+    });
+
+    it('should handle JOIN with multiple ON conditions via and()', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      // and(eq(users.id, orders.userId), eq(orders.status, users.status))
+      const multiCondJoin = queries.find(
+        (q) =>
+          q.sql.includes('INNER JOIN orders') &&
+          q.sql.includes('users.id = orders.user_id') &&
+          q.sql.includes('orders.status = users.status')
+      );
+      expect(multiCondJoin).toBeDefined();
+      expect(multiCondJoin!.sql).toContain(' AND ');
+    });
+
+    it('should handle JOIN with or() ON conditions', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      // or(eq(users.id, orders.userId), eq(users.name, orders.status))
+      const orJoin = queries.find(
+        (q) =>
+          q.sql.includes('INNER JOIN orders') &&
+          q.sql.includes(' OR ') &&
+          q.sql.includes('users.name = orders.status')
+      );
+      expect(orJoin).toBeDefined();
+      expect(orJoin!.sql).toContain(
+        'users.id = orders.user_id OR users.name = orders.status'
+      );
+      expect(orJoin!.sql).not.toContain(' AND ');
+    });
+
+    it('should handle JOIN with nested and()/or() ON conditions', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      // and(eq(users.id, orders.userId), or(eq(orders.status, users.status), eq(orders.total, users.id)))
+      const nestedJoin = queries.find(
+        (q) =>
+          q.sql.includes('INNER JOIN orders') &&
+          q.sql.includes(' AND ') &&
+          q.sql.includes(' OR ')
+      );
+      expect(nestedJoin).toBeDefined();
+      expect(nestedJoin!.sql).toContain(
+        'users.id = orders.user_id AND (orders.status = users.status OR orders.total = users.id)'
+      );
+    });
+
+    it('should handle JOIN with named columns', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const namedJoin = queries.find(
+        (q) =>
+          q.sql.includes('SELECT id, name, total FROM') &&
+          q.sql.includes('INNER JOIN')
+      );
+      expect(namedJoin).toBeDefined();
+      expect(namedJoin!.sql).toContain('ON users.id = orders.user_id');
+    });
+
+    it('should include joined tables in tables array', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const joinQuery = queries.find((q) => q.sql.includes('INNER JOIN'));
+      expect(joinQuery).toBeDefined();
+      expect(joinQuery!.tables).toContain('users');
+      expect(joinQuery!.tables).toContain('orders');
+    });
+  });
+
+  describe('GROUP BY extraction', () => {
+    it('should extract GROUP BY with single column', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const groupQuery = queries.find(
+        (q) => q.sql.includes('GROUP BY') && !q.sql.includes('orders.status')
+      );
+      expect(groupQuery).toBeDefined();
+      expect(groupQuery!.sql).toContain('GROUP BY users.id');
+    });
+
+    it('should extract GROUP BY with multiple columns', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const multiGroupQuery = queries.find(
+        (q) =>
+          q.sql.includes('GROUP BY') &&
+          q.sql.includes('users.id') &&
+          q.sql.includes('orders.status')
+      );
+      expect(multiGroupQuery).toBeDefined();
+      expect(multiGroupQuery!.sql).toContain(
+        'GROUP BY users.id, orders.status'
+      );
+    });
+
+    it('should place GROUP BY between WHERE and ORDER BY', () => {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-joins.tsx')],
+        schema,
+      });
+
+      const queries = results[0].queries;
+      const fullQuery = queries.find(
+        (q) =>
+          q.sql.includes('GROUP BY') &&
+          q.sql.includes('ORDER BY') &&
+          q.sql.includes('LIMIT')
+      );
+      expect(fullQuery).toBeDefined();
+      // Verify ordering: GROUP BY comes before ORDER BY
+      const groupIdx = fullQuery!.sql.indexOf('GROUP BY');
+      const orderIdx = fullQuery!.sql.indexOf('ORDER BY');
+      const limitIdx = fullQuery!.sql.indexOf('LIMIT');
+      expect(groupIdx).toBeLessThan(orderIdx);
+      expect(orderIdx).toBeLessThan(limitIdx);
+    });
+  });
+
   describe('SQL generation accuracy', () => {
     it('should generate correct INSERT syntax', () => {
       const results = extractSqlQueries({
