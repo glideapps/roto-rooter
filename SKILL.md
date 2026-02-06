@@ -36,6 +36,7 @@ Example output:
 rr [FILES...]                   # analyze files (default: all routes)
 rr --check links,forms          # run specific checks
 rr --check all                  # run all checks (including optional)
+rr --check defaults,forms       # run default checks plus specific optional checks
 rr --format json                # JSON output
 rr --root ./my-app              # set project root
 rr sql --drizzle                # extract SQL queries from Drizzle ORM code
@@ -47,7 +48,7 @@ rr sql --drizzle --format json  # SQL extraction with JSON output
 **Default checks** (run automatically):
 
 - **links** - validates Link/NavLink href targets exist as routes
-- **loader** - detects loader data usage issues
+- **loader** - detects loader data usage issues and `clientLoader`/`clientAction` with server-only imports
 - **params** - validates route params match definitions
 - **interactivity** - detects disconnected dialogs (Save buttons that don't save, stub handlers)
 

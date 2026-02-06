@@ -23,6 +23,9 @@ rr --check links,forms
 # Run all checks (including optional ones)
 rr --check all
 
+# Run default checks plus specific optional checks
+rr --check defaults,forms
+
 # Output as JSON
 rr --format json
 
@@ -59,7 +62,7 @@ rr sql --drizzle --format json
 **Default checks** (run automatically):
 
 - **links**: Validates `<Link>`, `redirect()`, and `navigate()` targets exist as defined routes. Suggests closest matching route when a typo is detected. Auto-fixable when a close match exists.
-- **loader**: Validates `useLoaderData()` is only used in routes that export a loader function.
+- **loader**: Validates `useLoaderData()` is only used in routes that export a loader function. Detects `clientLoader`/`clientAction` that import server-only modules (database drivers, `fs`, etc.) which will fail in the browser. Auto-fixable by renaming to `loader`/`action`.
 - **params**: Validates `useParams()` accesses only params defined in the route path (e.g., `:id` in `/users/:id`).
 - **interactivity**: Detects disconnected interactive elements:
   - Dialog/modal forms where "Save" button only closes the dialog without persisting data

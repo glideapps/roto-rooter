@@ -476,6 +476,69 @@ export default function Users() {
     });
   });
 
+  describe('loader-check fixes', () => {
+    it('should fix clientLoader to loader and re-analysis finds no issues', () => {
+      writeFile(
+        'app/routes.ts',
+        `import { type RouteConfig, route } from '@react-router/dev/routes';
+export default [
+  route('/boats', 'routes/boats.tsx'),
+] satisfies RouteConfig;`
+      );
+
+      // Route with clientLoader that imports server-only module
+      writeFile(
+        'app/routes/boats.tsx',
+        `import { useLoaderData } from 'react-router';
+import { db } from '~/db';
+import { boatsTable } from 'drizzle-orm';
+
+export async function clientLoader() {
+  const boats = await db.select().from(boatsTable);
+  return { boats };
+}
+
+export default function Boats() {
+  const { boats } = useLoaderData<typeof clientLoader>();
+  return <div>{boats.length} boats</div>;
+}`
+      );
+
+      // Analyze - should find clientLoader with server-only import
+      const result1 = analyze({
+        root: tempDir,
+        files: [],
+        checks: ['loader'],
+      });
+      const clientLoaderIssue = result1.issues.find((i) =>
+        i.message.includes('clientLoader')
+      );
+      expect(clientLoaderIssue).toBeDefined();
+      expect(clientLoaderIssue?.fix).toBeDefined();
+      expect(clientLoaderIssue?.fix?.description).toContain('loader');
+
+      // Apply fix
+      const fixResult = applyFixes(result1.issues, false);
+      expect(fixResult.fixesApplied).toBeGreaterThanOrEqual(1);
+
+      // Verify content - clientLoader renamed to loader
+      const newContent = readFile('app/routes/boats.tsx');
+      expect(newContent).toContain('export async function loader()');
+      expect(newContent).not.toContain('clientLoader()');
+
+      // Re-analyze - no clientLoader issues
+      const result2 = analyze({
+        root: tempDir,
+        files: [],
+        checks: ['loader'],
+      });
+      const clientLoaderIssue2 = result2.issues.find((i) =>
+        i.message.includes('clientLoader')
+      );
+      expect(clientLoaderIssue2).toBeUndefined();
+    });
+  });
+
   describe('dry-run mode', () => {
     it('should not modify files but report what would be fixed', () => {
       writeFile(
