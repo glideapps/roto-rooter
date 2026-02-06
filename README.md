@@ -1,133 +1,129 @@
 # roto-rooter
 
-Static analysis and functional verifier tool for React Router applications.
+A static analysis tool for [React Router](https://reactrouter.com/) apps. It catches common bugs -- broken links, missing loaders, hydration mismatches, disconnected UI elements, and incorrect database operations -- by reading your route definitions and cross-referencing them against your components.
 
-## Installation
-
-```bash
+```
 npm install -g roto-rooter
 ```
 
-## Usage
+## Running Checks
 
-```bash
-# Check all files in current directory
-rr
-
-# Check specific file(s)
-rr app/routes/employees.tsx
-
-# Run specific checks only
-rr --check links,forms
-
-# Run all checks (including optional ones)
-rr --check all
-
-# Run default checks plus specific optional checks
-rr --check defaults,forms
-
-# Output as JSON
-rr --format json
-
-# Set project root (the directory containing the app/ folder)
-rr --root ./my-app
-
-# Automatically fix issues where possible
-rr --fix
-
-# Preview fixes without applying
-rr --dry-run
-
-# Fix specific file(s)
-rr --fix app/routes/dashboard.tsx
-
-# Enable Drizzle ORM persistence checking (auto-discovers schema)
-rr --check drizzle
-
-# Drizzle checking with explicit schema path
-rr --check drizzle --drizzle-schema src/db/schema.ts
-
-# Extract SQL queries from Drizzle ORM code
-rr sql --drizzle
-
-# Extract queries from a specific file
-rr sql --drizzle app/routes/users.tsx
-
-# SQL output as JSON
-rr sql --drizzle --format json
+```
+rr [OPTIONS] [FILES...]
 ```
 
-## Checks
+Point `rr` at your project and it scans your route files for issues. With no arguments it runs the **default checks** (links, loader, params, interactivity) against all files in the current directory.
 
-**Default checks** (run automatically):
+| Option                    | Description                                                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-c, --check <checks>`    | Comma-separated checks to run. Use `defaults` for the default set, `all` for everything, or pick individual checks: `links`, `loader`, `params`, `interactivity`, `forms`, `hydration`, `drizzle` |
+| `-f, --format <format>`   | Output format: `text` (default) or `json`                                                                                                                                                         |
+| `-r, --root <path>`       | Project root containing the `app/` folder (default: cwd)                                                                                                                                          |
+| `--fix`                   | Auto-fix issues where possible                                                                                                                                                                    |
+| `--dry-run`               | Preview fixes without writing files                                                                                                                                                               |
+| `--drizzle-schema <path>` | Path to Drizzle schema file (auto-discovered by default)                                                                                                                                          |
 
-- **links**: Validates `<Link>`, `redirect()`, and `navigate()` targets exist as defined routes. Suggests closest matching route when a typo is detected. Auto-fixable when a close match exists.
-- **loader**: Validates `useLoaderData()` is only used in routes that export a loader function. Detects `clientLoader`/`clientAction` that import server-only modules (database drivers, `fs`, etc.) which will fail in the browser. Auto-fixable by renaming to `loader`/`action`.
-- **params**: Validates `useParams()` accesses only params defined in the route path (e.g., `:id` in `/users/:id`).
-- **interactivity**: Detects disconnected interactive elements:
-  - Dialog/modal forms where "Save" button only closes the dialog without persisting data
-  - "Delete" confirmation buttons that only close without performing the action
-  - Buttons with empty or stub onClick handlers (console.log only)
-  - Validates dialogs use React Router `<Form>` or `useFetcher.submit()` for data operations
+**Checks at a glance:**
 
-**Optional checks** (opt-in via `--check`):
+- **links** (default) -- validates `<Link>`, `redirect()`, `navigate()` targets exist as routes
+- **loader** (default) -- ensures `useLoaderData()` is backed by a loader; catches `clientLoader` importing server-only modules
+- **params** (default) -- ensures `useParams()` only accesses params defined in the route path
+- **interactivity** (default) -- catches "Save" buttons that don't save, "Delete" buttons that don't delete, and empty click handlers
+- **forms** (opt-in) -- validates `<Form>` targets have actions and that field names match `formData.get()` calls
+- **hydration** (opt-in) -- detects SSR/client mismatches from `new Date()`, `Math.random()`, `window` access in render
+- **drizzle** (opt-in) -- validates Drizzle ORM operations against your schema (missing columns, type mismatches, etc.)
 
-- **forms**: Validates `<Form>` components submit to routes with action exports, and that form fields match what the action reads via `formData.get()`. Supports intent-based dispatch patterns. Auto-fixable when targeting a mistyped route.
-- **hydration**: Detects SSR hydration mismatch risks:
-  - Date/time operations without consistent timezone handling
-  - Locale-dependent formatting (e.g., `toLocaleString()`) without explicit `timeZone` option
-  - Random value generation during render (`Math.random()`, `uuid()`, `nanoid()`)
-  - Browser-only API access outside `useEffect` (`window`, `document`, `localStorage`)
+**Example output:**
 
-  Some hydration issues are auto-fixable (e.g., adding `{ timeZone: "UTC" }` to locale methods, replacing `uuid()` with `useId()`).
+```
+$ rr --root my-app
 
-- **drizzle** (persistence): Validates database operations against Drizzle ORM schema. Auto-discovers schema from common locations (`db/schema.ts`, `src/db/schema.ts`, etc.) or use `--drizzle-schema` for custom paths.
-  - Unknown table or column references in `db.insert()`, `db.update()`, `db.delete()`
-  - Missing required columns on `db.insert()` calls
-  - Null literal assigned to `notNull` column (insert or update)
-  - Invalid enum literal values (checked against schema-defined allowed values)
-  - Type mismatches: string from `formData.get()` to integer, boolean, timestamp, or json column
-  - Writing to auto-generated columns (e.g., serial, auto-increment) on insert
-  - `DELETE` or `UPDATE` without `.where()` clause (affects all rows)
-  - Enum columns receiving unvalidated external input
+rr found 5 issues:
 
-## SQL Query Extraction
+[error] dashboard.tsx:12:7
+  href="/employeees"
+  x No matching route
+  -> Did you mean: /employees?
 
-The `rr sql` command extracts database queries from ORM code and generates equivalent SQL statements.
+[error] tasks.tsx:6:16
+  useLoaderData()
+  x useLoaderData() called but route has no loader
+  -> Add a loader function or remove the hook
 
-```bash
-rr sql --drizzle                          # extract all SQL queries
-rr sql --drizzle app/routes/users.tsx     # extract from specific file
-rr sql --drizzle --format json            # JSON output
-rr sql --drizzle --drizzle-schema db/schema.ts  # explicit schema path
+[error] employees.$id.edit.tsx:7:32
+  useParams().invalidParam
+  x useParams() accesses "invalidParam" but route has no :invalidParam parameter
+  -> Available params: :id
+
+[error] disconnected-dialog.tsx:27:11
+  <Button onClick={...}>Save Changes</Button>
+  x "Save Changes" button in Dialog only closes dialog without saving data
+  -> Wrap inputs in a <Form> component or use useFetcher.submit() to persist data
+
+[warning] disconnected-dialog.tsx:78:11
+  <Button onClick={...}>Add Item</Button>
+  x "Add Item" button has an empty or stub onClick handler
+  -> Implement the handler or remove the button if not needed
+
+Summary: 4 errors, 1 warning
+Run with --help for options.
 ```
 
-Supports SELECT, INSERT, UPDATE, and DELETE patterns with parameterized queries and column type inference from the schema.
+## Extracting SQL
 
-## Programmatic API
+```
+rr sql --drizzle [OPTIONS] [FILES...]
+```
 
-```typescript
-import { analyze, applyFixes } from 'roto-rooter';
+Reads your Drizzle ORM code and prints the equivalent SQL for every query it finds. Useful for reviewing what your app actually sends to the database.
 
-// Run analysis
-const result = analyze({
-  root: './my-app',
-  files: [], // empty = all files
-  checks: [], // empty = all checks
-  format: 'text',
-});
+| Option                    | Description                                              |
+| ------------------------- | -------------------------------------------------------- |
+| `--drizzle`               | Required. Specifies the ORM to analyze.                  |
+| `-f, --format <format>`   | Output format: `text` (default) or `json`                |
+| `-r, --root <path>`       | Project root directory (default: cwd)                    |
+| `--drizzle-schema <path>` | Path to Drizzle schema file (auto-discovered by default) |
 
-console.log(result.issues);
+**Example output:**
 
-// Apply auto-fixes
-const fixResult = applyFixes(result.issues);
-console.log(`Fixed ${fixResult.fixesApplied} issues`);
+```
+$ rr sql --drizzle --root my-app
+
+Found 6 SQL queries:
+
+File: app/routes/users.tsx:13:26
+  SELECT * FROM users
+
+File: app/routes/users.tsx:16:9
+  SELECT id, name, email FROM users
+
+File: app/routes/users.tsx:24:29
+  SELECT * FROM users WHERE status = 'active'
+
+File: app/routes/users.tsx:36:9
+  INSERT INTO users (name, email, status) VALUES ($1, $2, $3)
+  Parameters:
+    $1: name (text)
+    $2: email (text)
+    $3: status (enum)
+
+File: app/routes/orders.tsx:16:9
+  INSERT INTO orders (status, user_id, total) VALUES ($1, $2, $3)
+  Parameters:
+    $1: status (enum)
+    $2: userId (integer)
+    $3: total (integer)
+
+File: app/routes/users.tsx:42:9
+  DELETE FROM users WHERE id = $1
+  Parameters:
+    $1: Number(params.id) (serial)
 ```
 
 ## Development
 
-```bash
-npm install      # Install dependencies
-npm test         # Run tests
-npm run build    # Build for distribution
+```
+npm install      # install dependencies
+npm test         # run tests
+npm run build    # build for distribution
 ```
