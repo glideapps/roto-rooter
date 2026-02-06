@@ -43,5 +43,8 @@ export default [
     route('/intent-toplevel', 'routes/intent-toplevel.tsx'),
     // SQL extraction test fixture
     route('/sql-operations/:id?', 'routes/sql-operations.tsx'),
+    // Client loader check fixtures
+    route('/client-loader-db', 'routes/client-loader-db.tsx'),
+    route('/client-loader-safe', 'routes/client-loader-safe.tsx'),
   ]),
 ] satisfies RouteConfig;

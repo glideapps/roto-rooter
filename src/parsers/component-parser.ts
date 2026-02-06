@@ -22,6 +22,12 @@ import {
   getJsxTagName,
   isPascalCase,
 } from '../utils/ast-utils.js';
+import serverOnlyConfig from '../server-only-modules.json';
+
+const serverOnlyModules = new Set(serverOnlyConfig.modules);
+const serverOnlyPatterns = serverOnlyConfig.patterns.map(
+  (p: string) => new RegExp(p)
+);
 
 /**
  * Parse a TSX component file and extract links, forms, and hooks
@@ -36,6 +42,24 @@ export function parseComponent(filePath: string): ComponentAnalysis {
   const hydrationRisks: HydrationRisk[] = [];
   let hasLoader = false;
   let hasAction = false;
+  let hasClientLoader = false;
+  let hasClientAction = false;
+  let clientLoaderSpan: SourceSpan | undefined;
+  let clientActionSpan: SourceSpan | undefined;
+  const serverImports: string[] = [];
+
+  // Detect server-only imports
+  walkAst(sourceFile, (node) => {
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteral(node.moduleSpecifier)
+    ) {
+      const mod = node.moduleSpecifier.text;
+      if (isServerOnlyModule(mod)) {
+        serverImports.push(mod);
+      }
+    }
+  });
 
   // Track context for hydration analysis
   const useEffectStack: ts.Node[] = [];
@@ -228,7 +252,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
       dataHooks.push(hookRef);
     }
 
-    // Check for loader/action exports
+    // Check for loader/action/clientLoader/clientAction exports
     if (ts.isFunctionDeclaration(node) && node.name) {
       if (isExported(node)) {
         if (node.name.text === 'loader') {
@@ -236,6 +260,14 @@ export function parseComponent(filePath: string): ComponentAnalysis {
         }
         if (node.name.text === 'action') {
           hasAction = true;
+        }
+        if (node.name.text === 'clientLoader') {
+          hasClientLoader = true;
+          clientLoaderSpan = getNodeSpan(sourceFile, node.name, filePath);
+        }
+        if (node.name.text === 'clientAction') {
+          hasClientAction = true;
+          clientActionSpan = getNodeSpan(sourceFile, node.name, filePath);
         }
       }
     }
@@ -250,6 +282,14 @@ export function parseComponent(filePath: string): ComponentAnalysis {
           if (decl.name.text === 'action') {
             hasAction = true;
           }
+          if (decl.name.text === 'clientLoader') {
+            hasClientLoader = true;
+            clientLoaderSpan = getNodeSpan(sourceFile, decl.name, filePath);
+          }
+          if (decl.name.text === 'clientAction') {
+            hasClientAction = true;
+            clientActionSpan = getNodeSpan(sourceFile, decl.name, filePath);
+          }
         }
       }
     }
@@ -263,6 +303,11 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     hydrationRisks,
     hasLoader,
     hasAction,
+    hasClientLoader,
+    hasClientAction,
+    serverImports,
+    clientLoaderSpan,
+    clientActionSpan,
   };
 }
 
@@ -1021,6 +1066,28 @@ function detectHydrationRisk(
   }
 
   return undefined;
+}
+
+/**
+ * Check if an import specifier refers to a server-only module
+ */
+function isServerOnlyModule(specifier: string): boolean {
+  if (serverOnlyModules.has(specifier)) {
+    return true;
+  }
+  // Check for scoped packages (e.g., '@prisma/client' matches import '@prisma/client/edge')
+  for (const mod of serverOnlyModules) {
+    if (specifier.startsWith(mod + '/')) {
+      return true;
+    }
+  }
+  // Check regex patterns (e.g., .server convention)
+  for (const pattern of serverOnlyPatterns) {
+    if (pattern.test(specifier)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

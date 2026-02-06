@@ -138,6 +138,16 @@ export interface ComponentAnalysis {
   hasLoader: boolean;
   /** Whether this file exports an action function */
   hasAction: boolean;
+  /** Whether this file exports a clientLoader function */
+  hasClientLoader: boolean;
+  /** Whether this file exports a clientAction function */
+  hasClientAction: boolean;
+  /** Server-only module names imported by this file */
+  serverImports: string[];
+  /** Span of clientLoader identifier for auto-fix */
+  clientLoaderSpan?: SourceSpan;
+  /** Span of clientAction identifier for auto-fix */
+  clientActionSpan?: SourceSpan;
 }
 
 /**

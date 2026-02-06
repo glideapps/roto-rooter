@@ -50,6 +50,8 @@ describe('route-parser', () => {
         '/protocol-links',
         '/intent-toplevel',
         '/sql-operations/:id?',
+        '/client-loader-db',
+        '/client-loader-safe',
       ]);
     });
 
