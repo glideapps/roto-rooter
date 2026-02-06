@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { analyze, ALL_CHECKS } from './analyzer.js';
+import { analyze, ALL_CHECKS, DEFAULT_CHECKS } from './analyzer.js';
 import { applyFixes } from './fixer.js';
 import type { CliOptions, FixResult } from './types.js';
 import { formatIssues } from './utils/format-issue.js';
@@ -314,11 +314,14 @@ function parseArgs(args: string[]): ParsedArgs {
     if (arg === '--check' || arg === '-c') {
       const value = args[i + 1];
       if (value) {
-        if (value === 'all') {
-          options.checks = [...ALL_CHECKS];
-        } else {
-          options.checks = value.split(',').map((c) => c.trim());
-        }
+        options.checks = value
+          .split(',')
+          .map((c) => c.trim())
+          .flatMap((c) => {
+            if (c === 'all') return ALL_CHECKS;
+            if (c === 'defaults') return DEFAULT_CHECKS;
+            return c;
+          });
       }
       i += 2;
       continue;
@@ -368,8 +371,8 @@ OPTIONS:
   -h, --help              Show this help message
   -v, --version           Show version number
   -f, --format <format>   Output format: text (default) or json
-  -c, --check <checks>    Comma-separated list of checks to run, or "all"
-                          Default: links, loader, params, interactivity
+  -c, --check <checks>    Comma-separated list of checks to run
+                          Aliases: "defaults" (links, loader, params, interactivity), "all"
                           Optional: forms, hydration, drizzle
   -r, --root <path>       Project root directory containing the app/ folder (default: cwd)
   --fix                   Automatically fix issues where possible
@@ -385,6 +388,9 @@ EXAMPLES:
 
   # Run only link and form checks
   rr --check links,forms
+
+  # Run default checks plus forms
+  rr --check defaults,forms
 
   # Run all checks (including optional ones)
   rr --check all

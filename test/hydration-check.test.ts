@@ -226,7 +226,7 @@ describe('hydration-check', () => {
       expect(line16Issues[0].message).toContain('Locale-dependent formatting');
     });
 
-    it('should deduplicate nested date-render errors', () => {
+    it('should not flag new Date(arg) but should flag inner new Date()', () => {
       const componentPath = path.join(
         fixturesDir,
         'app/routes/hydration-dedup.tsx'
@@ -234,20 +234,13 @@ describe('hydration-check', () => {
       const component = parseComponent(componentPath);
       const issues = checkHydration([component]);
 
-      // Case 2: new Date(new Date().setHours(0, 0, 0, 0))
-      // The outer new Date(...) should suppress the inner new Date()
-      // Lines 20-21: const isToday = new Date(data.date) >= new Date(new Date().setHours(...))
-      // We expect 2 date-render errors:
-      // - new Date(data.date) at line 21
-      // - new Date(new Date().setHours(0,0,0,0)) which contains and suppresses inner new Date() at line 21
+      // Case 2: new Date(data.date) >= new Date(new Date().setHours(0, 0, 0, 0))
+      // new Date(data.date) has args -> not flagged (deterministic)
+      // new Date(new Date().setHours(...)) has args -> not flagged
+      // inner new Date() has no args -> flagged as date-render
       const line21Issues = issues.filter((i) => i.location.line === 21);
-      // Should be 2 errors: one for new Date(data.date), one for outer new Date(...)
-      expect(line21Issues).toHaveLength(2);
-      expect(
-        line21Issues.every((i) =>
-          i.message.includes('Date created during render')
-        )
-      ).toBe(true);
+      expect(line21Issues).toHaveLength(1);
+      expect(line21Issues[0].message).toContain('Date created during render');
     });
 
     it('should not deduplicate separate date-render errors', () => {

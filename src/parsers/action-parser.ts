@@ -190,6 +190,7 @@ function isIntentGet(
   expr: ts.Expression,
   formDataVariables: Set<string>
 ): boolean {
+  expr = unwrapTypeAssertions(expr);
   if (ts.isCallExpression(expr)) {
     const callExpr = expr.expression;
     if (ts.isPropertyAccessExpression(callExpr)) {
@@ -267,9 +268,28 @@ function extractIntentCheckValue(
 }
 
 /**
+ * Unwrap type assertions and parentheses to get the underlying expression.
+ * Handles: `expr as Type`, `expr satisfies Type`, `expr!`, `(expr)`, `<Type>expr`
+ */
+function unwrapTypeAssertions(expr: ts.Expression): ts.Expression {
+  while (
+    ts.isAsExpression(expr) ||
+    ts.isNonNullExpression(expr) ||
+    ts.isParenthesizedExpression(expr) ||
+    ts.isTypeAssertionExpression(expr) ||
+    ts.isSatisfiesExpression(expr)
+  ) {
+    expr = expr.expression;
+  }
+  return expr;
+}
+
+/**
  * Check if an expression is a call to request.formData() or similar
  */
 function isFormDataCall(expr: ts.Expression): boolean {
+  expr = unwrapTypeAssertions(expr);
+
   // Handle await: await request.formData()
   if (ts.isAwaitExpression(expr)) {
     return isFormDataCall(expr.expression);

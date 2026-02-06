@@ -1,0 +1,28 @@
+{
+  "modules": [
+    "pg",
+    "pg-native",
+    "mysql",
+    "mysql2",
+    "better-sqlite3",
+    "sqlite3",
+    "@libsql/client",
+    "mongodb",
+    "redis",
+    "ioredis",
+    "drizzle-orm",
+    "@prisma/client",
+    "typeorm",
+    "sequelize",
+    "knex",
+    "kysely",
+    "mongoose",
+    "mikro-orm",
+    "fs",
+    "fs/promises",
+    "child_process",
+    "net",
+    "crypto"
+  ],
+  "patterns": ["\\.server"]
+}

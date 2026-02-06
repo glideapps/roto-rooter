@@ -22,6 +22,12 @@ import {
   getJsxTagName,
   isPascalCase,
 } from '../utils/ast-utils.js';
+import serverOnlyConfig from '../server-only-modules.json';
+
+const serverOnlyModules = new Set(serverOnlyConfig.modules);
+const serverOnlyPatterns = serverOnlyConfig.patterns.map(
+  (p: string) => new RegExp(p)
+);
 
 /**
  * Parse a TSX component file and extract links, forms, and hooks
@@ -36,6 +42,24 @@ export function parseComponent(filePath: string): ComponentAnalysis {
   const hydrationRisks: HydrationRisk[] = [];
   let hasLoader = false;
   let hasAction = false;
+  let hasClientLoader = false;
+  let hasClientAction = false;
+  let clientLoaderSpan: SourceSpan | undefined;
+  let clientActionSpan: SourceSpan | undefined;
+  const serverImports: string[] = [];
+
+  // Detect server-only imports
+  walkAst(sourceFile, (node) => {
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteral(node.moduleSpecifier)
+    ) {
+      const mod = node.moduleSpecifier.text;
+      if (isServerOnlyModule(mod)) {
+        serverImports.push(mod);
+      }
+    }
+  });
 
   // Track context for hydration analysis
   const useEffectStack: ts.Node[] = [];
@@ -44,6 +68,8 @@ export function parseComponent(filePath: string): ComponentAnalysis {
   const serverFunctionBodies = new Set<ts.Node>();
   // Track event handler function bodies - code here only runs on user interaction, not during render
   const eventHandlerBodies = new Set<ts.Node>();
+  // Track named export function bodies (not loader/action/default) - Forms inside these are utility components
+  const namedExportBodies = new Set<ts.Node>();
 
   // First pass: find all elements with suppressHydrationWarning, server function bodies, and event handlers
   walkAst(sourceFile, (node) => {
@@ -53,12 +79,22 @@ export function parseComponent(filePath: string): ComponentAnalysis {
       }
     }
 
-    // Find loader/action function bodies
+    // Find loader/action function bodies and named export component bodies
     if (ts.isFunctionDeclaration(node) && node.name && isExported(node)) {
       const name = node.name.text;
       if (name === 'loader' || name === 'action') {
         if (node.body) {
           serverFunctionBodies.add(node.body);
+        }
+      } else {
+        const modifiers = ts.canHaveModifiers(node)
+          ? ts.getModifiers(node)
+          : undefined;
+        const isDefault =
+          modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword) ??
+          false;
+        if (!isDefault && node.body) {
+          namedExportBodies.add(node.body);
         }
       }
     }
@@ -76,6 +112,15 @@ export function parseComponent(filePath: string): ComponentAnalysis {
                 ts.isFunctionExpression(decl.initializer)
               ) {
                 serverFunctionBodies.add(decl.initializer.body);
+              }
+            }
+          } else {
+            if (decl.initializer) {
+              if (
+                ts.isArrowFunction(decl.initializer) ||
+                ts.isFunctionExpression(decl.initializer)
+              ) {
+                namedExportBodies.add(decl.initializer.body);
               }
             }
           }
@@ -158,6 +203,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     if (isJsxElementWithName(node, 'Form')) {
       const form = extractFormReference(node, sourceFile, filePath);
       if (form) {
+        form.inNamedExport = isInsideNamedExport(node, namedExportBodies);
         forms.push(form);
       }
     }
@@ -206,7 +252,7 @@ export function parseComponent(filePath: string): ComponentAnalysis {
       dataHooks.push(hookRef);
     }
 
-    // Check for loader/action exports
+    // Check for loader/action/clientLoader/clientAction exports
     if (ts.isFunctionDeclaration(node) && node.name) {
       if (isExported(node)) {
         if (node.name.text === 'loader') {
@@ -214,6 +260,14 @@ export function parseComponent(filePath: string): ComponentAnalysis {
         }
         if (node.name.text === 'action') {
           hasAction = true;
+        }
+        if (node.name.text === 'clientLoader') {
+          hasClientLoader = true;
+          clientLoaderSpan = getNodeSpan(sourceFile, node.name, filePath);
+        }
+        if (node.name.text === 'clientAction') {
+          hasClientAction = true;
+          clientActionSpan = getNodeSpan(sourceFile, node.name, filePath);
         }
       }
     }
@@ -228,6 +282,14 @@ export function parseComponent(filePath: string): ComponentAnalysis {
           if (decl.name.text === 'action') {
             hasAction = true;
           }
+          if (decl.name.text === 'clientLoader') {
+            hasClientLoader = true;
+            clientLoaderSpan = getNodeSpan(sourceFile, decl.name, filePath);
+          }
+          if (decl.name.text === 'clientAction') {
+            hasClientAction = true;
+            clientActionSpan = getNodeSpan(sourceFile, decl.name, filePath);
+          }
         }
       }
     }
@@ -241,6 +303,11 @@ export function parseComponent(filePath: string): ComponentAnalysis {
     hydrationRisks,
     hasLoader,
     hasAction,
+    hasClientLoader,
+    hasClientAction,
+    serverImports,
+    clientLoaderSpan,
+    clientActionSpan,
   };
 }
 
@@ -785,6 +852,24 @@ function isInsideEventHandler(
 }
 
 /**
+ * Check if a node is inside a named export function (not default/loader/action)
+ * Forms inside these are utility components, not the route's own forms
+ */
+function isInsideNamedExport(
+  node: ts.Node,
+  namedExportBodies: Set<ts.Node>
+): boolean {
+  let current: ts.Node | undefined = node;
+  while (current) {
+    if (namedExportBodies.has(current)) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
+/**
  * Check if a function name follows event handler naming conventions
  * Common patterns: handleClick, handleSubmit, onClick, onSubmit, etc.
  */
@@ -831,17 +916,20 @@ function detectHydrationRisk(
   const pos = getLineAndColumn(sourceFile, node.getStart());
   const location = { file: filePath, line: pos.line, column: pos.column };
 
-  // Detect new Date() calls
+  // Detect new Date() calls -- only no-arg calls are non-deterministic
+  // new Date(someArg) is deterministic (converts a known value) and safe
   if (ts.isNewExpression(node)) {
     if (ts.isIdentifier(node.expression) && node.expression.text === 'Date') {
-      return {
-        type: 'date-render',
-        location,
-        code: node.getText(sourceFile),
-        inUseEffect,
-        hasSuppressWarning,
-        callSpan: getNodeSpan(sourceFile, node, filePath),
-      };
+      if (!node.arguments || node.arguments.length === 0) {
+        return {
+          type: 'date-render',
+          location,
+          code: node.getText(sourceFile),
+          inUseEffect,
+          hasSuppressWarning,
+          callSpan: getNodeSpan(sourceFile, node, filePath),
+        };
+      }
     }
   }
 
@@ -978,6 +1066,28 @@ function detectHydrationRisk(
   }
 
   return undefined;
+}
+
+/**
+ * Check if an import specifier refers to a server-only module
+ */
+function isServerOnlyModule(specifier: string): boolean {
+  if (serverOnlyModules.has(specifier)) {
+    return true;
+  }
+  // Check for scoped packages (e.g., '@prisma/client' matches import '@prisma/client/edge')
+  for (const mod of serverOnlyModules) {
+    if (specifier.startsWith(mod + '/')) {
+      return true;
+    }
+  }
+  // Check regex patterns (e.g., .server convention)
+  for (const pattern of serverOnlyPatterns) {
+    if (pattern.test(specifier)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
