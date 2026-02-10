@@ -5,7 +5,8 @@ import type { RouteDefinition } from '../types.js';
 import { parseFile, walkAst } from '../utils/ast-utils.js';
 
 /**
- * Parse the app/routes.ts file and extract route definitions
+ * Parse the app/routes.ts file and extract route definitions.
+ * Resolves imports from other route files (e.g., [...trustedRoutes, ...appRoutes]).
  */
 export function parseRoutes(rootDir: string): RouteDefinition[] {
   const routesPath = path.join(rootDir, 'app', 'routes.ts');
@@ -17,12 +18,19 @@ export function parseRoutes(rootDir: string): RouteDefinition[] {
   const content = fs.readFileSync(routesPath, 'utf-8');
   const sourceFile = parseFile(routesPath, content);
 
+  // Collect default imports: identifier name -> resolved file path
+  const imports = collectDefaultImports(sourceFile, path.dirname(routesPath));
+
   const routes: RouteDefinition[] = [];
 
   walkAst(sourceFile, (node) => {
     // Look for the default export array
     if (ts.isExportAssignment(node) && node.expression) {
-      const extracted = extractRoutesFromExpression(node.expression, rootDir);
+      const extracted = extractRoutesFromExpression(
+        node.expression,
+        rootDir,
+        imports
+      );
       routes.push(...extracted);
     }
   });
@@ -31,18 +39,144 @@ export function parseRoutes(rootDir: string): RouteDefinition[] {
 }
 
 /**
- * Extract routes from an expression (array literal or call expression)
+ * Collect default import declarations from a source file.
+ * Maps imported identifier names to resolved file paths.
+ * e.g., `import appRoutes from "./app-routes"` -> { "appRoutes": "/abs/path/app-routes.ts" }
+ */
+function collectDefaultImports(
+  sourceFile: ts.SourceFile,
+  sourceDir: string
+): Map<string, string> {
+  const imports = new Map<string, string>();
+
+  walkAst(sourceFile, (node) => {
+    if (
+      ts.isImportDeclaration(node) &&
+      node.importClause?.name &&
+      node.moduleSpecifier &&
+      ts.isStringLiteral(node.moduleSpecifier)
+    ) {
+      const identifierName = node.importClause.name.text;
+      const modulePath = node.moduleSpecifier.text;
+
+      // Only resolve relative imports (local route files)
+      if (modulePath.startsWith('.')) {
+        const resolved = resolveModulePath(sourceDir, modulePath);
+        if (resolved) {
+          imports.set(identifierName, resolved);
+        }
+      }
+    }
+  });
+
+  return imports;
+}
+
+/**
+ * Resolve a relative module path to an absolute file path.
+ * Tries .ts extension if the path has no extension.
+ */
+function resolveModulePath(
+  sourceDir: string,
+  modulePath: string
+): string | undefined {
+  const basePath = path.resolve(sourceDir, modulePath);
+
+  // Try exact path first, then .ts extension
+  for (const candidate of [basePath, `${basePath}.ts`]) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Extract routes from an imported file's default export.
+ * Parses the file and finds `export default [...]` or `const x = [...]; export default x`.
+ */
+function extractRoutesFromImportedFile(
+  filePath: string,
+  rootDir: string
+): RouteDefinition[] {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const sourceFile = parseFile(filePath, content);
+  const routes: RouteDefinition[] = [];
+
+  // Collect local variable declarations (for `const x = [...]; export default x`)
+  const localVars = new Map<string, ts.Expression>();
+  walkAst(sourceFile, (node) => {
+    if (
+      ts.isVariableStatement(node) &&
+      node.declarationList.declarations.length > 0
+    ) {
+      for (const decl of node.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && decl.initializer) {
+          localVars.set(decl.name.text, decl.initializer);
+        }
+      }
+    }
+  });
+
+  walkAst(sourceFile, (node) => {
+    if (ts.isExportAssignment(node) && node.expression) {
+      let expr = node.expression;
+
+      // If the export is an identifier, resolve it to a local variable
+      if (ts.isIdentifier(expr)) {
+        const resolved = localVars.get(expr.text);
+        if (resolved) {
+          expr = resolved;
+        }
+      }
+
+      const extracted = extractRoutesFromExpression(expr, rootDir, new Map());
+      routes.push(...extracted);
+    }
+  });
+
+  return routes;
+}
+
+/**
+ * Extract routes from an expression (array literal or call expression).
+ * Handles spread elements by resolving imported identifiers to their source files.
  */
 function extractRoutesFromExpression(
   expr: ts.Expression,
-  rootDir: string
+  rootDir: string,
+  imports: Map<string, string>
 ): RouteDefinition[] {
   const routes: RouteDefinition[] = [];
 
-  // Array literal: [route(...), route(...)]
+  // Array literal: [route(...), ...importedRoutes]
   if (ts.isArrayLiteralExpression(expr)) {
     for (const element of expr.elements) {
-      const extracted = extractRoutesFromExpression(element, rootDir);
+      // Handle spread elements: [...importedRoutes]
+      if (ts.isSpreadElement(element)) {
+        const spreadArg = element.expression;
+        if (ts.isIdentifier(spreadArg)) {
+          const importedFile = imports.get(spreadArg.text);
+          if (importedFile) {
+            const imported = extractRoutesFromImportedFile(
+              importedFile,
+              rootDir
+            );
+            routes.push(...imported);
+            continue;
+          }
+        }
+        // If spread arg isn't a resolvable import, try extracting directly
+        const extracted = extractRoutesFromExpression(
+          spreadArg,
+          rootDir,
+          imports
+        );
+        routes.push(...extracted);
+        continue;
+      }
+
+      const extracted = extractRoutesFromExpression(element, rootDir, imports);
       routes.push(...extracted);
     }
     return routes;
@@ -50,7 +184,7 @@ function extractRoutesFromExpression(
 
   // "as" expression: [...] satisfies RouteConfig
   if (ts.isSatisfiesExpression(expr) || ts.isAsExpression(expr)) {
-    return extractRoutesFromExpression(expr.expression, rootDir);
+    return extractRoutesFromExpression(expr.expression, rootDir, imports);
   }
 
   // Call expression: route("/path", "file.tsx") or layout("file.tsx", [...])
@@ -60,12 +194,12 @@ function extractRoutesFromExpression(
       : undefined;
 
     if (funcName === 'route') {
-      const route = parseRouteCall(expr, rootDir);
+      const route = parseRouteCall(expr, rootDir, imports);
       if (route) {
         routes.push(route);
       }
     } else if (funcName === 'layout') {
-      const layoutRoutes = parseLayoutCall(expr, rootDir);
+      const layoutRoutes = parseLayoutCall(expr, rootDir, imports);
       routes.push(...layoutRoutes);
     } else if (funcName === 'index') {
       const route = parseIndexCall(expr, rootDir);
@@ -85,7 +219,8 @@ function extractRoutesFromExpression(
  */
 function parseRouteCall(
   call: ts.CallExpression,
-  rootDir: string
+  rootDir: string,
+  imports: Map<string, string>
 ): RouteDefinition | undefined {
   const args = call.arguments;
   if (args.length < 2) {
@@ -129,7 +264,7 @@ function parseRouteCall(
 
     // Check if it's a children array
     if (ts.isArrayLiteralExpression(thirdArg)) {
-      children = extractRoutesFromExpression(thirdArg, rootDir);
+      children = extractRoutesFromExpression(thirdArg, rootDir, imports);
     }
   }
 
@@ -137,7 +272,7 @@ function parseRouteCall(
   if (args.length >= 4) {
     const fourthArg = args[3];
     if (ts.isArrayLiteralExpression(fourthArg)) {
-      children = extractRoutesFromExpression(fourthArg, rootDir);
+      children = extractRoutesFromExpression(fourthArg, rootDir, imports);
     }
   }
 
@@ -150,7 +285,8 @@ function parseRouteCall(
  */
 function parseLayoutCall(
   call: ts.CallExpression,
-  rootDir: string
+  rootDir: string,
+  imports: Map<string, string>
 ): RouteDefinition[] {
   const args = call.arguments;
   if (args.length < 2) {
@@ -165,7 +301,7 @@ function parseLayoutCall(
 
   // Second arg: children array
   const childrenArg = args[1];
-  const children = extractRoutesFromExpression(childrenArg, rootDir);
+  const children = extractRoutesFromExpression(childrenArg, rootDir, imports);
 
   // Layout itself doesn't define a path, so we just return the children
   // but we could track the layout file for other checks
