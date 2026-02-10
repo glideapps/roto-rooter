@@ -8,6 +8,7 @@ import {
 } from '../src/parsers/route-parser.js';
 
 const fixturesDir = path.join(__dirname, 'fixtures/sample-app');
+const multiFileDir = path.join(__dirname, 'fixtures/multi-file-app');
 
 describe('route-parser', () => {
   describe('parseRoutes', () => {
@@ -72,6 +73,46 @@ describe('route-parser', () => {
       const homeRoute = routes.find((r) => r.path === '/');
 
       expect(homeRoute?.id).toBe('home');
+    });
+  });
+
+  describe('multi-file route imports', () => {
+    it('should resolve routes spread from imported files', () => {
+      const routes = parseRoutes(multiFileDir);
+      const paths = routes.map((r) => r.path);
+
+      // Routes from trusted-routes.ts (via spread)
+      expect(paths).toContain('/oauth/callback');
+      expect(paths).toContain('/logout');
+
+      // Routes from app-routes.ts (via spread, inside layout)
+      expect(paths).toContain('/');
+      expect(paths).toContain('/employees');
+      expect(paths).toContain('/employees/:id');
+    });
+
+    it('should extract all 5 routes from multi-file config', () => {
+      const routes = parseRoutes(multiFileDir);
+      expect(routes).toHaveLength(5);
+    });
+
+    it('should preserve route IDs from imported files', () => {
+      const routes = parseRoutes(multiFileDir);
+      const homeRoute = routes.find((r) => r.path === '/');
+      expect(homeRoute?.id).toBe('home');
+    });
+
+    it('should preserve route order: trusted routes first, then app routes', () => {
+      const routes = parseRoutes(multiFileDir);
+      const paths = routes.map((r) => r.path);
+
+      expect(paths).toEqual([
+        '/oauth/callback',
+        '/logout',
+        '/',
+        '/employees',
+        '/employees/:id',
+      ]);
     });
   });
 
