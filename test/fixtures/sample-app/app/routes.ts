@@ -51,5 +51,7 @@ export default [
     route('/client-loader-safe', 'routes/client-loader-safe.tsx'),
     // Component href detection test
     route('/component-links', 'routes/component-links.tsx'),
+    // Raw SQL tagged template literal test
+    route('/sql-raw-subquery', 'routes/sql-raw-subquery.tsx'),
   ]),
 ] satisfies RouteConfig;

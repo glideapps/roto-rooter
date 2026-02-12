@@ -43,3 +43,27 @@ export const events = pgTable('events', {
   scheduledAt: timestamp('scheduled_at').notNull(),
   metadata: jsonb('metadata'),
 });
+
+// Employees table for raw SQL subquery testing
+export const employees = pgTable('employees', {
+  id: serial('id').primaryKey(),
+  fullName: text('full_name').notNull(),
+  email: text('email').notNull(),
+  department: text('department'),
+  isDeleted: boolean('is_deleted').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Images table
+export const images = pgTable('images', {
+  id: serial('id').primaryKey(),
+  url: text('url').notNull(),
+});
+
+// Join table for employee profile photos
+export const employeeImages = pgTable('employee_images', {
+  id: serial('id').primaryKey(),
+  employeeId: integer('employee_id').notNull(),
+  imageId: integer('image_id').notNull(),
+  isPrimary: boolean('is_primary').default(false),
+});
