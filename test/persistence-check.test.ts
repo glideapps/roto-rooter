@@ -11,7 +11,7 @@ describe('drizzle-schema-parser', () => {
   it('should parse table definitions', () => {
     const schema = parseDrizzleSchema(schemaPath);
 
-    expect(schema.tables).toHaveLength(3);
+    expect(schema.tables).toHaveLength(6);
 
     const usersTable = schema.tables.find((t) => t.name === 'users');
     expect(usersTable).toBeDefined();

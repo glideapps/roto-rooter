@@ -26,6 +26,7 @@ interface DbChainInfo {
   insertValues?: Map<string, ValueInfo>;
   setValues?: Map<string, ValueInfo>;
   whereConditions?: WhereCondition[];
+  rawWhereClauses?: string[];
   joins?: JoinInfo[];
   groupBy?: GroupByColumn[];
   orderBy?: OrderByInfo[];
@@ -199,7 +200,49 @@ function parseDbQuery(
     return undefined;
   }
 
-  const chainInfo = analyzeDbChain(expr, dbVariables);
+  // Handle db.execute(sql`...`) -- standalone raw SQL query
+  if (ts.isPropertyAccessExpression(expr.expression)) {
+    const obj = expr.expression.expression;
+    const method = expr.expression.name.text;
+    if (
+      ts.isIdentifier(obj) &&
+      dbVariables.has(obj.text) &&
+      method === 'execute' &&
+      expr.arguments.length > 0
+    ) {
+      const rawSql = extractSqlTemplate(
+        expr.arguments[0],
+        schema,
+        importAliases
+      );
+      if (rawSql) {
+        const loc = getLineAndColumn(sourceFile, node.getStart(sourceFile));
+        const codeSnippet = getCodeSnippet(
+          content,
+          node.getStart(sourceFile),
+          node.getEnd()
+        );
+        const trimmed = rawSql.trimStart().toUpperCase();
+        const type: ExtractedQuery['type'] = trimmed.startsWith('INSERT')
+          ? 'INSERT'
+          : trimmed.startsWith('UPDATE')
+            ? 'UPDATE'
+            : trimmed.startsWith('DELETE')
+              ? 'DELETE'
+              : 'SELECT';
+        return {
+          type,
+          sql: rawSql,
+          tables: [],
+          location: { file: filePath, line: loc.line, column: loc.column },
+          code: codeSnippet,
+          parameters: [],
+        };
+      }
+    }
+  }
+
+  const chainInfo = analyzeDbChain(expr, dbVariables, schema, importAliases);
   if (!chainInfo) {
     return undefined;
   }
@@ -254,7 +297,9 @@ function parseDbQuery(
  */
 function analyzeDbChain(
   callExpr: ts.CallExpression,
-  dbVariables: Set<string>
+  dbVariables: Set<string>,
+  schema: DrizzleSchema,
+  importAliases: Map<string, string>
 ): DbChainInfo | undefined {
   const chain = collectMethodChain(callExpr);
 
@@ -314,7 +359,11 @@ function analyzeDbChain(
     switch (method) {
       case 'select':
         if (args.length > 0 && ts.isObjectLiteralExpression(args[0])) {
-          info.selectColumns = extractSelectColumns(args[0]);
+          info.selectColumns = extractSelectColumns(
+            args[0],
+            schema,
+            importAliases
+          );
         }
         break;
 
@@ -338,11 +387,16 @@ function analyzeDbChain(
 
       case 'where':
         if (args.length > 0) {
-          const conditions = extractWhereConditions(args[0]);
-          info.whereConditions = [
-            ...(info.whereConditions || []),
-            ...conditions,
-          ];
+          const rawSql = extractSqlTemplate(args[0], schema, importAliases);
+          if (rawSql) {
+            info.rawWhereClauses = [...(info.rawWhereClauses || []), rawSql];
+          } else {
+            const conditions = extractWhereConditions(args[0]);
+            info.whereConditions = [
+              ...(info.whereConditions || []),
+              ...conditions,
+            ];
+          }
         }
         break;
 
@@ -439,11 +493,26 @@ function getTableNameFromArg(arg: ts.Expression): string {
   return '';
 }
 
-function extractSelectColumns(arg: ts.ObjectLiteralExpression): string[] {
+function extractSelectColumns(
+  arg: ts.ObjectLiteralExpression,
+  schema: DrizzleSchema,
+  importAliases: Map<string, string>
+): string[] {
   const columns: string[] = [];
 
   for (const prop of arg.properties) {
     if (ts.isPropertyAssignment(prop)) {
+      // Check if value is a sql tagged template (computed column)
+      const sqlText = extractSqlTemplate(
+        prop.initializer,
+        schema,
+        importAliases
+      );
+      if (sqlText) {
+        columns.push(sqlText);
+        continue;
+      }
+
       const key = ts.isIdentifier(prop.name)
         ? prop.name.text
         : ts.isStringLiteral(prop.name)
@@ -846,6 +915,15 @@ function generateSql(
         sql += ` WHERE ${whereClause}`;
       }
 
+      if (info.rawWhereClauses && info.rawWhereClauses.length > 0) {
+        const rawClause = info.rawWhereClauses.join(' AND ');
+        if (info.whereConditions && info.whereConditions.length > 0) {
+          sql += ` AND ${rawClause}`;
+        } else {
+          sql += ` WHERE ${rawClause}`;
+        }
+      }
+
       if (info.groupBy && info.groupBy.length > 0) {
         const groupClause = info.groupBy
           .map((g) => {
@@ -942,6 +1020,65 @@ function generateSql(
   }
 
   return undefined;
+}
+
+// ============================================================================
+// Raw SQL Tagged Template Extraction
+// ============================================================================
+
+function extractSqlTemplate(
+  node: ts.Expression,
+  schema: DrizzleSchema,
+  importAliases: Map<string, string>
+): string | undefined {
+  if (!ts.isTaggedTemplateExpression(node)) return undefined;
+
+  const tag = node.tag;
+  if (!ts.isIdentifier(tag) || tag.text !== 'sql') return undefined;
+
+  const template = node.template;
+
+  if (ts.isNoSubstitutionTemplateLiteral(template)) {
+    return template.text.trim();
+  }
+
+  if (ts.isTemplateExpression(template)) {
+    let result = template.head.text;
+
+    for (const span of template.templateSpans) {
+      result += resolveTemplateExpr(span.expression, schema, importAliases);
+      result += span.literal.text;
+    }
+
+    return result.replace(/\s+/g, ' ').trim();
+  }
+
+  return undefined;
+}
+
+function resolveTemplateExpr(
+  expr: ts.Expression,
+  schema: DrizzleSchema,
+  importAliases: Map<string, string>
+): string {
+  if (ts.isPropertyAccessExpression(expr)) {
+    const tableName = getTableNameFromArg(expr.expression);
+    const colName = expr.name.text;
+
+    if (tableName) {
+      const resolved = importAliases.get(tableName) || tableName;
+      const table = getTableByName(schema, resolved);
+
+      if (table) {
+        const col = table.columns.find((c) => c.name === colName);
+        return `${table.sqlName}.${col?.sqlName || colName}`;
+      }
+
+      return `${resolved}.${colName}`;
+    }
+  }
+
+  return expr.getText();
 }
 
 // ============================================================================

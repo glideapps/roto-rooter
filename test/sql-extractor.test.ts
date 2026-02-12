@@ -569,6 +569,111 @@ describe('sql-extractor', () => {
     });
   });
 
+  describe('raw sql`` tagged template extraction', () => {
+    function getQueries() {
+      const results = extractSqlQueries({
+        root: fixturesDir,
+        files: [path.join(fixturesDir, 'app/routes/sql-raw-subquery.tsx')],
+        schema,
+      });
+      expect(results).toHaveLength(1);
+      return results[0].queries;
+    }
+
+    // Pattern 1: sql`` as a computed column inside .select({})
+    // This is the user's original bug -- a subquery used as a virtual column
+    it('should include subquery text from sql`` computed columns in .select()', () => {
+      const queries = getQueries();
+
+      // The query selecting from employees should contain the subquery tables
+      const employeeSelect = queries.find(
+        (q) => q.type === 'SELECT' && q.sql.includes('employees')
+      );
+      expect(employeeSelect).toBeDefined();
+      expect(employeeSelect!.sql).toContain('employee_images');
+      expect(employeeSelect!.sql).toContain('images');
+    });
+
+    it('should preserve the raw SQL text of a subquery in a computed column', () => {
+      const queries = getQueries();
+      const employeeSelect = queries.find(
+        (q) => q.type === 'SELECT' && q.sql.includes('employees')
+      );
+      expect(employeeSelect).toBeDefined();
+
+      // The subquery structure should be visible in the output
+      expect(employeeSelect!.sql).toContain('SELECT');
+      expect(employeeSelect!.sql).toContain('JOIN');
+      expect(employeeSelect!.sql).toContain('LIMIT 1');
+    });
+
+    it('should still extract regular named columns alongside sql`` computed columns', () => {
+      const queries = getQueries();
+      const employeeSelect = queries.find(
+        (q) => q.type === 'SELECT' && q.sql.includes('employees')
+      );
+      expect(employeeSelect).toBeDefined();
+
+      // The real columns should still appear
+      expect(employeeSelect!.sql).toContain('id');
+      expect(employeeSelect!.sql).toContain('full_name');
+      expect(employeeSelect!.sql).toContain('email');
+      expect(employeeSelect!.sql).toContain('department');
+    });
+
+    // Pattern 2: sql`` used in a .where() clause for complex conditions
+    it('should extract sql`` used in a WHERE clause', () => {
+      const queries = getQueries();
+
+      // The query on users with a raw WHERE should contain the raw SQL text
+      const rawWhere = queries.find(
+        (q) =>
+          q.type === 'SELECT' &&
+          q.sql.includes('users') &&
+          q.sql.includes('NOW()')
+      );
+      expect(rawWhere).toBeDefined();
+      expect(rawWhere!.sql).toContain('INTERVAL');
+    });
+
+    // Pattern 3: sql`` with no interpolations (pure raw expression like NOW())
+    it('should extract sql`` with no interpolations as a computed column', () => {
+      const queries = getQueries();
+
+      const nowQuery = queries.find(
+        (q) =>
+          q.type === 'SELECT' &&
+          q.sql.includes('NOW()') &&
+          q.sql.includes('users')
+      );
+      expect(nowQuery).toBeDefined();
+    });
+
+    // Pattern 4: sql`` with a dynamic variable (not a column ref) interpolated
+    it('should handle sql`` with dynamic variable interpolations', () => {
+      const queries = getQueries();
+
+      const dynamicWhere = queries.find(
+        (q) =>
+          q.type === 'SELECT' &&
+          q.sql.includes('orders') &&
+          q.sql.includes('cancelled')
+      );
+      expect(dynamicWhere).toBeDefined();
+    });
+
+    // Pattern 5: db.execute(sql`...`) -- standalone raw query
+    it('should extract db.execute(sql`...`) as a standalone query', () => {
+      const queries = getQueries();
+
+      const executeQuery = queries.find(
+        (q) => q.sql.includes('COUNT(*)') && q.sql.includes('GROUP BY')
+      );
+      expect(executeQuery).toBeDefined();
+      expect(executeQuery!.sql).toContain('employees');
+    });
+  });
+
   describe('SQL generation accuracy', () => {
     it('should generate correct INSERT syntax', () => {
       const results = extractSqlQueries({
