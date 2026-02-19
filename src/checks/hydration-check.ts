@@ -159,17 +159,25 @@ function spanContainsLocation(
  */
 function createIssueForRisk(risk: HydrationRisk): AnalyzerIssue | undefined {
   switch (risk.type) {
-    case 'date-render':
+    case 'date-render': {
+      let message: string;
+      if (risk.code.includes('Date.now()')) {
+        message =
+          'Date.now() returns the current timestamp, which differs between server render and client hydration';
+      } else {
+        message =
+          'new Date() without arguments returns the current time, which differs between server render and client hydration';
+      }
       return {
         category: 'hydration',
         severity: 'warning',
-        message:
-          'new Date() without arguments returns the current time, which differs between server render and client hydration',
+        message,
         location: risk.location,
         code: risk.code,
         suggestion:
           'Pass the current date from the loader to ensure server and client use the same value',
       };
+    }
 
     case 'locale-format': {
       const isDateSpecific =
@@ -205,8 +213,9 @@ function createIssueForRisk(risk: HydrationRisk): AnalyzerIssue | undefined {
       };
 
       // Add fix for locale formatting - add timeZone option
-      // Only fixable when we have callSpan and know the arg count
-      if (risk.callSpan && risk.argCount !== undefined) {
+      // Only for date-specific methods; ambiguous .toLocaleString() may be on a
+      // Number where timeZone is meaningless
+      if (isDateSpecific && risk.callSpan && risk.argCount !== undefined) {
         const fix = createLocaleFormatFix(risk);
         if (fix) {
           issue.fix = fix;

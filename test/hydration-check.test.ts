@@ -33,6 +33,9 @@ describe('hydration-check', () => {
         i.code?.includes('Date.now()')
       );
       expect(dateNowIssues.length).toBeGreaterThan(0);
+      expect(dateNowIssues[0].message).toContain(
+        'Date.now() returns the current timestamp'
+      );
     });
 
     it('should detect toLocaleDateString without timezone', () => {
