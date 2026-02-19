@@ -372,8 +372,8 @@ OPTIONS:
   -v, --version           Show version number
   -f, --format <format>   Output format: text (default) or json
   -c, --check <checks>    Comma-separated list of checks to run
-                          Aliases: "defaults" (links, loader, params, interactivity), "all"
-                          Optional: forms, hydration, drizzle
+                          Aliases: "defaults" (links, loader, params, interactivity, hydration), "all"
+                          Optional: forms, drizzle
   -r, --root <path>       Project root directory containing the app/ folder (default: cwd)
   --fix                   Automatically fix issues where possible
   --dry-run               Show what would be fixed without modifying files

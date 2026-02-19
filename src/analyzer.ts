@@ -22,10 +22,16 @@ import {
 } from './parsers/drizzle-schema-parser.js';
 
 // Checks that run by default when no --check is specified
-export const DEFAULT_CHECKS = ['links', 'loader', 'params', 'interactivity'];
+export const DEFAULT_CHECKS = [
+  'links',
+  'loader',
+  'params',
+  'interactivity',
+  'hydration',
+];
 
 // Checks that are available but disabled by default (opt-in)
-export const OPTIONAL_CHECKS = ['forms', 'hydration', 'drizzle'];
+export const OPTIONAL_CHECKS = ['forms', 'drizzle'];
 
 // All available checks
 export const ALL_CHECKS = [...DEFAULT_CHECKS, ...OPTIONAL_CHECKS];

@@ -23,9 +23,9 @@ Example output:
   [error] Link target "/users" does not match any route
 
 [hydration] app/routes/dashboard.tsx:31:12
-  {new Date().toLocaleString()}
-  [warning] new Date() in render may cause hydration mismatch
-  -> Move to useEffect or use suppressHydrationWarning
+  new Date()
+  [warning] new Date() without arguments returns the current time, which differs between server render and client hydration
+  -> Pass the current date from the loader to ensure server and client use the same value
 
 1 error, 1 warning
 ```
@@ -51,11 +51,11 @@ rr sql --drizzle --format json  # SQL extraction with JSON output
 - **loader** - detects loader data usage issues and `clientLoader`/`clientAction` with server-only imports
 - **params** - validates route params match definitions
 - **interactivity** - detects disconnected dialogs ("Save" buttons that don't save, "Delete" buttons that don't delete, stub handlers)
+- **hydration** - detects hydration mismatches (Date, Math.random, locale-dependent formatting, window access in render)
 
 **Optional checks** (opt-in via `--check`):
 
 - **forms** - validates Form action targets and method/action mismatches
-- **hydration** - detects hydration mismatches (Date, Math.random, window access in render)
 - **drizzle** - validates database operations against Drizzle ORM schema (unknown tables/columns, missing required columns, null-to-notNull, invalid enum literals, type mismatches, auto-generated column writes, DELETE/UPDATE without WHERE)
 
 ## Examples
