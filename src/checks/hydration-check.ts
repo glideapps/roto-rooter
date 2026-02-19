@@ -160,27 +160,48 @@ function spanContainsLocation(
 function createIssueForRisk(risk: HydrationRisk): AnalyzerIssue | undefined {
   switch (risk.type) {
     case 'date-render':
-      // Not auto-fixable - requires wrapping in useEffect with state management
       return {
         category: 'hydration',
-        severity: 'error',
-        message: 'Date created during render causes hydration mismatch',
+        severity: 'warning',
+        message:
+          'new Date() without arguments returns the current time, which differs between server render and client hydration',
         location: risk.location,
         code: risk.code,
         suggestion:
-          'Move to useEffect, use suppressHydrationWarning, or pass date from loader',
+          'Pass the current date from the loader to ensure server and client use the same value',
       };
 
     case 'locale-format': {
+      const isDateSpecific =
+        risk.code.includes('toLocaleDateString') ||
+        risk.code.includes('toLocaleTimeString') ||
+        risk.code.includes('Intl.DateTimeFormat');
+
+      let message: string;
+      let suggestion: string;
+
+      if (isDateSpecific) {
+        message =
+          'Date formatting without explicit timeZone produces different results on server and client';
+        suggestion =
+          (risk.argCount ?? 0) >= 2
+            ? 'Add timeZone to the existing options object, e.g. timeZone: "UTC"'
+            : 'Add a timeZone option, e.g. toLocaleDateString(undefined, { timeZone: "UTC" })';
+      } else {
+        // .toLocaleString() -- could be Number or Date, can't tell from AST
+        message =
+          'Locale-dependent formatting may produce different results on server and client';
+        suggestion =
+          'Pass a fixed locale, e.g. .toLocaleString("en-US"), to ensure consistent output';
+      }
+
       const issue: AnalyzerIssue = {
         category: 'hydration',
-        severity: 'error',
-        message:
-          'Locale-dependent formatting without explicit timeZone causes hydration mismatch',
+        severity: 'warning',
+        message,
         location: risk.location,
         code: risk.code,
-        suggestion:
-          'Add { timeZone: "UTC" } option, use suppressHydrationWarning, or format in useEffect',
+        suggestion,
       };
 
       // Add fix for locale formatting - add timeZone option
@@ -198,8 +219,8 @@ function createIssueForRisk(risk: HydrationRisk): AnalyzerIssue | undefined {
     case 'random-value': {
       const issue: AnalyzerIssue = {
         category: 'hydration',
-        severity: 'error',
-        message: 'Random value in render will cause hydration mismatch',
+        severity: 'warning',
+        message: 'Random value in render will differ between server and client',
         location: risk.location,
         code: risk.code,
         suggestion:
@@ -225,17 +246,15 @@ function createIssueForRisk(risk: HydrationRisk): AnalyzerIssue | undefined {
     }
 
     case 'browser-api':
-      // Not auto-fixable - wrapping in typeof guard is too complex without AST context
-      // The fix would depend on how the value is used (assignment, JSX, etc.)
       return {
         category: 'hydration',
-        severity: 'error',
+        severity: 'warning',
         message:
-          'Browser-only API accessed during render will fail on server and cause hydration mismatch',
+          'Browser-only API accessed during render is not available on the server',
         location: risk.location,
         code: risk.code,
         suggestion:
-          'Move to useEffect or check typeof window !== "undefined" first',
+          'Move to useEffect, or guard with typeof window !== "undefined"',
       };
 
     case 'loader-date':

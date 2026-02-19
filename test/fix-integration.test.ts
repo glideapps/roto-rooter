@@ -280,7 +280,7 @@ export default [
         checks: ['hydration'],
       });
       const localeIssue = result1.issues.find((i) =>
-        i.message.includes('Locale-dependent')
+        i.message.includes('Locale-dependent formatting may produce')
       );
       expect(localeIssue).toBeDefined();
       expect(localeIssue?.fix).toBeDefined();
@@ -302,7 +302,7 @@ export default [
         checks: ['hydration'],
       });
       const localeIssue2 = result2.issues.find((i) =>
-        i.message.includes('Locale-dependent')
+        i.message.includes('Locale-dependent formatting may produce')
       );
       expect(localeIssue2).toBeUndefined();
     });
@@ -330,7 +330,7 @@ export default [
         checks: ['hydration'],
       });
       const localeIssue = result1.issues.find((i) =>
-        i.message.includes('Locale-dependent')
+        i.message.includes('Date formatting without explicit timeZone')
       );
       expect(localeIssue?.fix).toBeDefined();
 
