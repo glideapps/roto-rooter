@@ -16,7 +16,7 @@ describe('hydration-check', () => {
       const issues = checkHydration([component]);
 
       const dateIssues = issues.filter((i) =>
-        i.message.includes('Date created during render')
+        i.message.includes('new Date() without arguments')
       );
       expect(dateIssues.length).toBeGreaterThan(0);
     });
@@ -33,9 +33,26 @@ describe('hydration-check', () => {
         i.code?.includes('Date.now()')
       );
       expect(dateNowIssues.length).toBeGreaterThan(0);
+      expect(dateNowIssues[0].message).toContain(
+        'Date.now() returns the current timestamp'
+      );
     });
 
-    it('should detect toLocaleString without timezone', () => {
+    it('should detect toLocaleDateString without timezone', () => {
+      const componentPath = path.join(
+        fixturesDir,
+        'app/routes/hydration-issues.tsx'
+      );
+      const component = parseComponent(componentPath);
+      const issues = checkHydration([component]);
+
+      const dateFormatIssues = issues.filter((i) =>
+        i.message.includes('Date formatting without explicit timeZone')
+      );
+      expect(dateFormatIssues.length).toBeGreaterThan(0);
+    });
+
+    it('should detect toLocaleString without fixed locale', () => {
       const componentPath = path.join(
         fixturesDir,
         'app/routes/hydration-issues.tsx'
@@ -44,7 +61,7 @@ describe('hydration-check', () => {
       const issues = checkHydration([component]);
 
       const localeIssues = issues.filter((i) =>
-        i.message.includes('Locale-dependent formatting')
+        i.message.includes('Locale-dependent formatting may produce')
       );
       expect(localeIssues.length).toBeGreaterThan(0);
     });
@@ -84,7 +101,7 @@ describe('hydration-check', () => {
       const issues = checkHydration([component]);
 
       const windowIssues = issues.filter((i) =>
-        i.message.includes('Browser-only API')
+        i.message.includes('Browser-only API accessed during render')
       );
       expect(windowIssues.length).toBeGreaterThan(0);
     });
@@ -223,7 +240,9 @@ describe('hydration-check', () => {
       // Should only report locale-format, not date-render
       const line16Issues = issues.filter((i) => i.location.line === 16);
       expect(line16Issues).toHaveLength(1);
-      expect(line16Issues[0].message).toContain('Locale-dependent formatting');
+      expect(line16Issues[0].message).toContain(
+        'Date formatting without explicit timeZone'
+      );
     });
 
     it('should not flag new Date(arg) but should flag inner new Date()', () => {
@@ -240,7 +259,7 @@ describe('hydration-check', () => {
       // inner new Date() has no args -> flagged as date-render
       const line21Issues = issues.filter((i) => i.location.line === 21);
       expect(line21Issues).toHaveLength(1);
-      expect(line21Issues[0].message).toContain('Date created during render');
+      expect(line21Issues[0].message).toContain('new Date() without arguments');
     });
 
     it('should not deduplicate separate date-render errors', () => {
@@ -276,7 +295,7 @@ describe('hydration-check', () => {
 
       // Line 30: new Date() - date-render error
       expect(line30Issues).toHaveLength(1);
-      expect(line30Issues[0].message).toContain('Date created during render');
+      expect(line30Issues[0].message).toContain('new Date() without arguments');
       // Lines 31-33: separate locale-format errors
       expect(line31Issues).toHaveLength(1);
       expect(line32Issues).toHaveLength(1);
@@ -285,7 +304,7 @@ describe('hydration-check', () => {
   });
 
   describe('issue severity', () => {
-    it('should mark random values as errors', () => {
+    it('should mark all hydration issues as warnings', () => {
       const componentPath = path.join(
         fixturesDir,
         'app/routes/hydration-issues.tsx'
@@ -293,40 +312,8 @@ describe('hydration-check', () => {
       const component = parseComponent(componentPath);
       const issues = checkHydration([component]);
 
-      const randomIssues = issues.filter((i) =>
-        i.message.includes('Random value')
-      );
-      expect(randomIssues.every((i) => i.severity === 'error')).toBe(true);
-    });
-
-    it('should mark browser API access as errors', () => {
-      const componentPath = path.join(
-        fixturesDir,
-        'app/routes/hydration-issues.tsx'
-      );
-      const component = parseComponent(componentPath);
-      const issues = checkHydration([component]);
-
-      const browserApiIssues = issues.filter((i) =>
-        i.message.includes('Browser-only API')
-      );
-      expect(browserApiIssues.every((i) => i.severity === 'error')).toBe(true);
-    });
-
-    it('should mark date formatting as errors', () => {
-      const componentPath = path.join(
-        fixturesDir,
-        'app/routes/hydration-issues.tsx'
-      );
-      const component = parseComponent(componentPath);
-      const issues = checkHydration([component]);
-
-      const dateIssues = issues.filter(
-        (i) =>
-          i.message.includes('Date created') ||
-          i.message.includes('Locale-dependent')
-      );
-      expect(dateIssues.every((i) => i.severity === 'error')).toBe(true);
+      expect(issues.length).toBeGreaterThan(0);
+      expect(issues.every((i) => i.severity === 'warning')).toBe(true);
     });
   });
 });

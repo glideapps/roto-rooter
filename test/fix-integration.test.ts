@@ -255,7 +255,7 @@ export default function OrgUser() {
   });
 
   describe('hydration-check fixes', () => {
-    it('should fix toLocaleString without timezone and re-analysis finds no issues', () => {
+    it('should not auto-fix ambiguous toLocaleString (could be Number or Date)', () => {
       writeFile(
         'app/routes.ts',
         `import { type RouteConfig, route } from '@react-router/dev/routes';
@@ -264,7 +264,7 @@ export default [
 ] satisfies RouteConfig;`
       );
 
-      // Component with toLocaleString() without timeZone option
+      // Component with toLocaleString() -- ambiguous, could be on Number or Date
       writeFile(
         'app/routes/dates.tsx',
         `export default function Dates() {
@@ -273,38 +273,17 @@ export default [
 }`
       );
 
-      // Analyze - should find the locale format issue
+      // Analyze - should find the locale format issue but no auto-fix
       const result1 = analyze({
         root: tempDir,
         files: [],
         checks: ['hydration'],
       });
       const localeIssue = result1.issues.find((i) =>
-        i.message.includes('Locale-dependent')
+        i.message.includes('Locale-dependent formatting may produce')
       );
       expect(localeIssue).toBeDefined();
-      expect(localeIssue?.fix).toBeDefined();
-      expect(localeIssue?.fix?.description).toContain('timeZone');
-
-      // Apply fix
-      const fixResult = applyFixes(result1.issues, false);
-      expect(fixResult.fixesApplied).toBeGreaterThanOrEqual(1);
-
-      // Verify content - should have timeZone option
-      const newContent = readFile('app/routes/dates.tsx');
-      expect(newContent).toContain('timeZone');
-      expect(newContent).toContain('UTC');
-
-      // Re-analyze - no locale format issues
-      const result2 = analyze({
-        root: tempDir,
-        files: [],
-        checks: ['hydration'],
-      });
-      const localeIssue2 = result2.issues.find((i) =>
-        i.message.includes('Locale-dependent')
-      );
-      expect(localeIssue2).toBeUndefined();
+      expect(localeIssue?.fix).toBeUndefined();
     });
 
     it('should fix toLocaleDateString without timezone', () => {
@@ -330,7 +309,7 @@ export default [
         checks: ['hydration'],
       });
       const localeIssue = result1.issues.find((i) =>
-        i.message.includes('Locale-dependent')
+        i.message.includes('Date formatting without explicit timeZone')
       );
       expect(localeIssue?.fix).toBeDefined();
 
