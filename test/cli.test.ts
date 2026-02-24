@@ -121,4 +121,117 @@ describe('cli', () => {
       expect(issue.category).toBe('links');
     }
   });
+
+  it('should warn about unknown check names', () => {
+    const dashboardPath = path.join(fixturesDir, 'app/routes/dashboard.tsx');
+    const { stderr, status } = runCli([
+      '--root',
+      fixturesDir,
+      '--check',
+      'foo',
+      dashboardPath,
+    ]);
+
+    expect(stderr).toContain('Unknown check "foo"');
+    expect(stderr).toContain('Valid checks:');
+    // No valid checks ran, no issues found -> exit 0
+    expect(status).toBe(0);
+  });
+
+  it('should suggest similar check names for typos', () => {
+    const dashboardPath = path.join(fixturesDir, 'app/routes/dashboard.tsx');
+    const { stderr } = runCli([
+      '--root',
+      fixturesDir,
+      '--check',
+      'link',
+      dashboardPath,
+    ]);
+
+    expect(stderr).toContain('Did you mean "links"');
+  });
+
+  it('should warn about unknown checks but still run valid ones', () => {
+    const dashboardPath = path.join(fixturesDir, 'app/routes/dashboard.tsx');
+    const { stdout, stderr, status } = runCli([
+      '--root',
+      fixturesDir,
+      '--check',
+      'links,bogus',
+      '--format',
+      'json',
+      dashboardPath,
+    ]);
+
+    expect(stderr).toContain('Unknown check "bogus"');
+
+    const output = JSON.parse(stdout);
+    expect(output.issues.length).toBeGreaterThan(0);
+    for (const issue of output.issues) {
+      expect(issue.category).toBe('links');
+    }
+    expect(status).toBe(1);
+  });
+
+  it('should not warn for valid check names and aliases', () => {
+    const dashboardPath = path.join(fixturesDir, 'app/routes/dashboard.tsx');
+
+    const { stderr: defaultsStderr } = runCli([
+      '--root',
+      fixturesDir,
+      '--check',
+      'defaults',
+      dashboardPath,
+    ]);
+    expect(defaultsStderr).not.toContain('Unknown check');
+
+    const { stderr: allStderr } = runCli([
+      '--root',
+      fixturesDir,
+      '--check',
+      'all',
+      dashboardPath,
+    ]);
+    expect(allStderr).not.toContain('Unknown check');
+
+    const { stderr: drizzleStderr } = runCli([
+      '--root',
+      fixturesDir,
+      '--check',
+      'defaults,drizzle',
+      dashboardPath,
+    ]);
+    expect(drizzleStderr).not.toContain('Unknown check');
+  });
+
+  it('should warn about unknown CLI flags', () => {
+    const dashboardPath = path.join(fixturesDir, 'app/routes/dashboard.tsx');
+    const { stderr } = runCli([
+      '--root',
+      fixturesDir,
+      '--bogus',
+      dashboardPath,
+    ]);
+
+    expect(stderr).toContain('Unknown option "--bogus"');
+  });
+
+  it('should treat everything after -- as file arguments', () => {
+    const dashboardPath = path.join(fixturesDir, 'app/routes/dashboard.tsx');
+    const { stdout, stderr, status } = runCli([
+      '--root',
+      fixturesDir,
+      '--format',
+      'json',
+      '--',
+      dashboardPath,
+    ]);
+
+    // -- should not cause unknown option warnings
+    expect(stderr).not.toContain('Unknown option');
+    // Should still analyze the file after --
+    expect(status).toBe(1);
+    const output = JSON.parse(stdout);
+    expect(output.issues.length).toBeGreaterThan(0);
+  });
 });
