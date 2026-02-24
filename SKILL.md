@@ -36,7 +36,7 @@ Example output:
 rr [FILES...]                   # analyze files (default: all routes)
 rr --check links,forms          # run specific checks
 rr --check all                  # run all checks (including optional)
-rr --check defaults,forms       # run default checks plus specific optional checks
+rr --check defaults,drizzle     # run default checks plus specific optional checks
 rr --format json                # JSON output
 rr --root ./my-app              # set project root
 rr sql --drizzle                # extract SQL queries from Drizzle ORM code
@@ -48,6 +48,7 @@ rr sql --drizzle --format json  # SQL extraction with JSON output
 **Default checks** (run automatically):
 
 - **links** - validates `<Link>`, `<NavLink>`, `redirect()`, `navigate()`, and `href` props on any component exist as routes
+- **forms** - validates Form action targets, field alignment between forms and actions, intent-based dispatch
 - **loader** - detects loader data usage issues and `clientLoader`/`clientAction` with server-only imports
 - **params** - validates route params match definitions
 - **interactivity** - detects disconnected dialogs ("Save" buttons that don't save, "Delete" buttons that don't delete, stub handlers)
@@ -55,7 +56,6 @@ rr sql --drizzle --format json  # SQL extraction with JSON output
 
 **Optional checks** (opt-in via `--check`):
 
-- **forms** - validates Form action targets and method/action mismatches
 - **drizzle** - validates database operations against Drizzle ORM schema (unknown tables/columns, missing required columns, null-to-notNull, invalid enum literals, type mismatches, auto-generated column writes, DELETE/UPDATE without WHERE)
 
 ## Examples

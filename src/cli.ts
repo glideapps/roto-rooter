@@ -404,8 +404,8 @@ OPTIONS:
   -v, --version           Show version number
   -f, --format <format>   Output format: text (default) or json
   -c, --check <checks>    Comma-separated list of checks to run
-                          Aliases: "defaults" (links, loader, params, interactivity, hydration), "all"
-                          Optional: forms, drizzle
+                          Aliases: "defaults" (links, forms, loader, params, interactivity, hydration), "all"
+                          Optional: drizzle
   -r, --root <path>       Project root directory containing the app/ folder (default: cwd)
   --fix                   Automatically fix issues where possible
   --dry-run               Show what would be fixed without modifying files
@@ -421,8 +421,8 @@ EXAMPLES:
   # Run only link and form checks
   rr --check links,forms
 
-  # Run default checks plus forms
-  rr --check defaults,forms
+  # Run default checks plus drizzle
+  rr --check defaults,drizzle
 
   # Run all checks (including optional ones)
   rr --check all
