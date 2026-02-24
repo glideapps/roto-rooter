@@ -12,7 +12,7 @@ npm install -g roto-rooter
 rr [OPTIONS] [FILES...]
 ```
 
-Point `rr` at your project and it scans your route files for issues. With no arguments it runs the **default checks** (links, loader, params, interactivity, hydration) against all files in the current directory.
+Point `rr` at your project and it scans your route files for issues. With no arguments it runs the **default checks** (links, forms, loader, params, interactivity, hydration) against all files in the current directory.
 
 | Option                    | Description                                                                                                                                                                                       |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -30,7 +30,7 @@ Point `rr` at your project and it scans your route files for issues. With no arg
 - **params** (default) -- ensures `useParams()` only accesses params defined in the route path
 - **interactivity** (default) -- catches "Save" buttons that don't save, "Delete" buttons that don't delete, and empty click handlers
 - **hydration** (default) -- detects SSR/client mismatches from `new Date()`, `Math.random()`, locale-dependent formatting, `window` access in render
-- **forms** (opt-in) -- validates `<Form>` targets have actions and that field names match `formData.get()` calls
+- **forms** (default) -- validates `<Form>` targets have actions and that field names match `formData.get()` calls
 - **drizzle** (opt-in) -- validates Drizzle ORM operations against your schema (missing columns, type mismatches, etc.)
 
 **Example output:**

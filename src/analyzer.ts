@@ -24,6 +24,7 @@ import {
 // Checks that run by default when no --check is specified
 export const DEFAULT_CHECKS = [
   'links',
+  'forms',
   'loader',
   'params',
   'interactivity',
@@ -31,7 +32,7 @@ export const DEFAULT_CHECKS = [
 ];
 
 // Checks that are available but disabled by default (opt-in)
-export const OPTIONAL_CHECKS = ['forms', 'drizzle'];
+export const OPTIONAL_CHECKS = ['drizzle'];
 
 // All available checks
 export const ALL_CHECKS = [...DEFAULT_CHECKS, ...OPTIONAL_CHECKS];
