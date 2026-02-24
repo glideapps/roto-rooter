@@ -13,6 +13,7 @@ import {
   discoverSchemaPath,
   parseDrizzleSchema,
 } from './parsers/drizzle-schema-parser.js';
+import { findBestMatch } from './utils/suggestion.js';
 
 // Injected by esbuild at build time
 declare const __VERSION__: string;
@@ -41,6 +42,25 @@ function main(): void {
   if (options.help) {
     printHelp();
     process.exit(0);
+  }
+
+  // Validate check names
+  if (options.checks.length > 0) {
+    const validNames = new Set(ALL_CHECKS);
+    const unknown = [
+      ...new Set(options.checks.filter((c) => !validNames.has(c))),
+    ];
+    if (unknown.length > 0) {
+      for (const name of unknown) {
+        const suggestion = findBestMatch(name, ALL_CHECKS);
+        const hint = suggestion ? ` Did you mean "${suggestion}"?` : '';
+        console.error(`Warning: Unknown check "${name}".${hint}`);
+      }
+      console.error(`Valid checks: ${ALL_CHECKS.join(', ')}`);
+      console.error(
+        `Aliases: "defaults" (${DEFAULT_CHECKS.join(', ')}), "all"`
+      );
+    }
   }
 
   const result = analyze(options);
@@ -275,34 +295,42 @@ function parseArgs(args: string[]): ParsedArgs {
   };
 
   let i = 0;
+  let endOfOptions = false;
   while (i < args.length) {
     const arg = args[i];
 
-    if (arg === '--help' || arg === '-h') {
+    // -- ends option processing; everything after is a file operand
+    if (arg === '--' && !endOfOptions) {
+      endOfOptions = true;
+      i++;
+      continue;
+    }
+
+    if (!endOfOptions && (arg === '--help' || arg === '-h')) {
       options.help = true;
       i++;
       continue;
     }
 
-    if (arg === '--version' || arg === '-v') {
+    if (!endOfOptions && (arg === '--version' || arg === '-v')) {
       options.version = true;
       i++;
       continue;
     }
 
-    if (arg === '--fix') {
+    if (!endOfOptions && arg === '--fix') {
       options.fix = true;
       i++;
       continue;
     }
 
-    if (arg === '--dry-run') {
+    if (!endOfOptions && arg === '--dry-run') {
       options.dryRun = true;
       i++;
       continue;
     }
 
-    if (arg === '--format' || arg === '-f') {
+    if (!endOfOptions && (arg === '--format' || arg === '-f')) {
       const value = args[i + 1];
       if (value === 'json' || value === 'text') {
         options.format = value;
@@ -311,7 +339,7 @@ function parseArgs(args: string[]): ParsedArgs {
       continue;
     }
 
-    if (arg === '--check' || arg === '-c') {
+    if (!endOfOptions && (arg === '--check' || arg === '-c')) {
       const value = args[i + 1];
       if (value) {
         options.checks = value
@@ -327,7 +355,7 @@ function parseArgs(args: string[]): ParsedArgs {
       continue;
     }
 
-    if (arg === '--root' || arg === '-r') {
+    if (!endOfOptions && (arg === '--root' || arg === '-r')) {
       const value = args[i + 1];
       if (value) {
         options.root = path.resolve(value);
@@ -336,7 +364,7 @@ function parseArgs(args: string[]): ParsedArgs {
       continue;
     }
 
-    if (arg === '--drizzle-schema') {
+    if (!endOfOptions && arg === '--drizzle-schema') {
       const value = args[i + 1];
       if (value) {
         options.drizzleSchemaPath = path.resolve(value);
@@ -345,11 +373,15 @@ function parseArgs(args: string[]): ParsedArgs {
       continue;
     }
 
-    // Positional argument - file to check
-    if (!arg.startsWith('-')) {
-      options.files.push(arg);
+    // Unknown flag
+    if (!endOfOptions && arg.startsWith('-')) {
+      console.error(`Warning: Unknown option "${arg}".`);
+      i++;
+      continue;
     }
 
+    // Positional argument - file to check
+    options.files.push(arg);
     i++;
   }
 
