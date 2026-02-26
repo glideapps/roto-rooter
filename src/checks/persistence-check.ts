@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import ts from 'typescript';
 import type {
   AnalyzerIssue,
   DrizzleSchema,
@@ -14,6 +16,7 @@ import {
   isNumericColumn,
   isEnumColumn,
 } from '../parsers/drizzle-schema-parser.js';
+import { parseFile, walkAst, getLineAndColumn } from '../utils/ast-utils.js';
 
 /**
  * Check persistence operations against Drizzle schema
@@ -36,6 +39,9 @@ export function checkPersistence(
       // File doesn't exist or can't be parsed - skip it
     }
   }
+
+  // Check for aggregate type assertion issues (sql<number> with COUNT/SUM/etc.)
+  issues.push(...checkAggregateTypeAssertions(files));
 
   return issues;
 }
@@ -405,5 +411,114 @@ function checkTypeMismatch(
     }
   }
 
+  return undefined;
+}
+
+// ============================================================================
+// Aggregate Type Assertion Check
+// ============================================================================
+
+const AGGREGATE_PATTERN = /\b(SUM|AVG|COUNT|MIN|MAX)\s*\(/i;
+
+/**
+ * Check for sql<number> tagged templates containing aggregate functions.
+ * Databases return aggregate results as strings, so sql<number>`COUNT(*)`
+ * will silently return "123" instead of 123.
+ */
+function checkAggregateTypeAssertions(files: string[]): AnalyzerIssue[] {
+  const issues: AnalyzerIssue[] = [];
+
+  for (const file of files) {
+    try {
+      const content = fs.readFileSync(file, 'utf-8');
+      const sourceFile = parseFile(file, content);
+
+      walkAst(sourceFile, (node) => {
+        if (!ts.isTaggedTemplateExpression(node)) return;
+
+        const tag = node.tag;
+        if (!ts.isIdentifier(tag) || tag.text !== 'sql') return;
+
+        const typeArgs = node.typeArguments;
+        if (!typeArgs || typeArgs.length === 0) return;
+
+        if (!typeContainsNumber(typeArgs[0])) return;
+
+        const templateText = extractRawTemplateText(node.template);
+        if (!templateText) return;
+
+        const match = templateText.match(AGGREGATE_PATTERN);
+        if (!match) return;
+
+        const aggFunc = match[1].toUpperCase();
+        const loc = getLineAndColumn(sourceFile, node.getStart(sourceFile));
+        const snippet = content
+          .slice(node.getStart(sourceFile), node.getEnd())
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        issues.push({
+          category: 'drizzle',
+          severity: 'error',
+          message: `sql<number> with ${aggFunc}() -- database returns string, not number`,
+          location: { file, line: loc.line, column: loc.column },
+          code: snippet.length > 120 ? snippet.slice(0, 117) + '...' : snippet,
+          suggestion: `Cast the result: Number(result) or use sql<string> and convert explicitly`,
+        });
+      });
+    } catch {
+      // Skip unparseable files
+    }
+  }
+
+  return issues;
+}
+
+/**
+ * Check if a TypeNode contains the `number` type
+ */
+function typeContainsNumber(typeNode: ts.TypeNode): boolean {
+  if (typeNode.kind === ts.SyntaxKind.NumberKeyword) {
+    return true;
+  }
+
+  if (ts.isUnionTypeNode(typeNode)) {
+    return typeNode.types.some((t) => typeContainsNumber(t));
+  }
+
+  if (ts.isIntersectionTypeNode(typeNode)) {
+    return typeNode.types.some((t) => typeContainsNumber(t));
+  }
+
+  if (ts.isTypeLiteralNode(typeNode)) {
+    for (const member of typeNode.members) {
+      if (ts.isPropertySignature(member) && member.type) {
+        if (typeContainsNumber(member.type)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Extract raw text from a template literal (head + all span literals)
+ */
+function extractRawTemplateText(
+  template: ts.TemplateLiteral
+): string | undefined {
+  if (ts.isNoSubstitutionTemplateLiteral(template)) {
+    return template.text;
+  }
+  if (ts.isTemplateExpression(template)) {
+    let result = template.head.text;
+    for (const span of template.templateSpans) {
+      result += '___';
+      result += span.literal.text;
+    }
+    return result;
+  }
   return undefined;
 }

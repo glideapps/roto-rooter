@@ -599,4 +599,92 @@ describe('persistence-check', () => {
       expect(whereIssues).toHaveLength(0);
     });
   });
+
+  describe('aggregate type assertion', () => {
+    const aggFixture = path.join(
+      fixturesDir,
+      'app/routes/sql-aggregate-types.tsx'
+    );
+
+    it('should error on sql<number> with COUNT', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const issues = checkPersistence([aggFixture], schema);
+
+      const countIssue = issues.find(
+        (i) => i.message.includes('COUNT') && i.message.includes('sql<number>')
+      );
+      expect(countIssue).toBeDefined();
+      expect(countIssue!.severity).toBe('error');
+      expect(countIssue!.category).toBe('drizzle');
+      expect(countIssue!.suggestion).toContain('Number(');
+    });
+
+    it('should error on sql<number> with SUM', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const issues = checkPersistence([aggFixture], schema);
+
+      const sumIssue = issues.find(
+        (i) => i.message.includes('SUM') && i.message.includes('sql<number>')
+      );
+      expect(sumIssue).toBeDefined();
+      expect(sumIssue!.severity).toBe('error');
+    });
+
+    it('should error on sql<number> with AVG', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const issues = checkPersistence([aggFixture], schema);
+
+      const avgIssue = issues.find(
+        (i) => i.message.includes('AVG') && i.message.includes('sql<number>')
+      );
+      expect(avgIssue).toBeDefined();
+      expect(avgIssue!.severity).toBe('error');
+    });
+
+    it('should error on sql<number | null> with MIN (union containing number)', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const issues = checkPersistence([aggFixture], schema);
+
+      const minIssue = issues.find(
+        (i) => i.message.includes('MIN') && i.message.includes('sql<number>')
+      );
+      expect(minIssue).toBeDefined();
+      expect(minIssue!.severity).toBe('error');
+    });
+
+    it('should error on sql<number> with MAX in db.execute', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const issues = checkPersistence([aggFixture], schema);
+
+      const maxIssue = issues.find(
+        (i) => i.message.includes('MAX') && i.message.includes('sql<number>')
+      );
+      expect(maxIssue).toBeDefined();
+      expect(maxIssue!.severity).toBe('error');
+    });
+
+    it('should produce exactly 5 aggregate warnings (no false positives)', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const issues = checkPersistence([aggFixture], schema);
+
+      const aggIssues = issues.filter((i) =>
+        i.message.includes('database returns string')
+      );
+      expect(aggIssues).toHaveLength(5);
+    });
+
+    it('should not flag existing sql-raw-subquery fixture (uses sql<string>)', () => {
+      const schema = parseDrizzleSchema(schemaPath);
+      const filePath = path.join(
+        fixturesDir,
+        'app/routes/sql-raw-subquery.tsx'
+      );
+      const issues = checkPersistence([filePath], schema);
+
+      const aggIssues = issues.filter((i) =>
+        i.message.includes('database returns string')
+      );
+      expect(aggIssues).toHaveLength(0);
+    });
+  });
 });

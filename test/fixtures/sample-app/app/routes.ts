@@ -53,5 +53,7 @@ export default [
     route('/component-links', 'routes/component-links.tsx'),
     // Raw SQL tagged template literal test
     route('/sql-raw-subquery', 'routes/sql-raw-subquery.tsx'),
+    // Aggregate type assertion test
+    route('/sql-aggregate-types', 'routes/sql-aggregate-types.tsx'),
   ]),
 ] satisfies RouteConfig;
