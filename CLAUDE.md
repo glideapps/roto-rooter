@@ -7,7 +7,7 @@ Static analysis and functional verifier tool for React Router applications. CLI 
 - `src/cli.ts` - CLI entry point
 - `src/analyzer.ts` - Main analysis orchestration
 - `src/parsers/` - AST parsers for routes, components, and actions
-- `src/checks/` - Individual check implementations (links, forms, loader, params, hydration, interactivity, persistence)
+- `src/checks/` - Individual check implementations (links, forms, loader, params, hydration, interactivity, drizzle/persistence)
 - `src/sql/` - SQL query extraction from ORM code (drizzle.ts, drizzle-operations.ts, types.ts)
 - `src/sql-extractor.ts` - SQL extraction orchestration and formatting
 - `src/types.ts` - Type definitions
