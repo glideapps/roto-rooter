@@ -56,7 +56,7 @@ rr sql --drizzle --format json  # SQL extraction with JSON output
 
 **Optional checks** (opt-in via `--check`):
 
-- **drizzle** - validates database operations against Drizzle ORM schema (unknown tables/columns, missing required columns, null-to-notNull, invalid enum literals, type mismatches, auto-generated column writes, DELETE/UPDATE without WHERE)
+- **drizzle** - validates database operations against Drizzle ORM schema (unknown tables/columns, missing required columns, null-to-notNull, invalid enum literals, type mismatches, auto-generated column writes, DELETE/UPDATE without WHERE, `sql<number>` with aggregates)
 
 ## Examples
 

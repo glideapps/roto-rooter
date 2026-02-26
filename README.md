@@ -31,7 +31,7 @@ Point `rr` at your project and it scans your route files for issues. With no arg
 - **interactivity** (default) -- catches "Save" buttons that don't save, "Delete" buttons that don't delete, and empty click handlers
 - **hydration** (default) -- detects SSR/client mismatches from `new Date()`, `Math.random()`, locale-dependent formatting, `window` access in render
 - **forms** (default) -- validates `<Form>` targets have actions and that field names match `formData.get()` calls
-- **drizzle** (opt-in) -- validates Drizzle ORM operations against your schema (missing columns, type mismatches, etc.)
+- **drizzle** (opt-in) -- validates Drizzle ORM operations against your schema (missing columns, type mismatches, `sql<number>` with aggregates, etc.)
 
 **Example output:**
 

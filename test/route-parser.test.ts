@@ -57,6 +57,7 @@ describe('route-parser', () => {
         '/client-loader-safe',
         '/component-links',
         '/sql-raw-subquery',
+        '/sql-aggregate-types',
       ]);
     });
 
